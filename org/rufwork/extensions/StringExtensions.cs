@@ -156,6 +156,50 @@ namespace org.rufwork.extensions
             return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
         }
 
+        public static string OperateOnNonQuotedChunks(this string str, 
+            Func<string, string> chunkProcessor,
+            params char[] astrSplittingTokens)
+        {
+            string strReturn = string.Empty;
+            string strUnquotedChunk = string.Empty;
+
+            for (int i = 0; i < str.Length; i++)
+            {
+                while (i < str.Length && !astrSplittingTokens.Contains(str[i]))
+                {
+                    strUnquotedChunk += str[i]; // I guess we could use indexOf, but that'd make the `params` more difficult to handle
+                    i++;
+                }
+                strReturn += chunkProcessor(strUnquotedChunk);      // TODO: StringBuilder
+                strUnquotedChunk = string.Empty;
+
+                // So we're either at the end of the string or we're in a quote.
+                if (i < str.Length)
+                {
+                    char splitterFound = str[i];
+                    i++;
+                    while (i < str.Length)
+                    {
+                        if (str[i].Equals(splitterFound))
+                            // If we have two of the same splitter char in a row, we're going to 
+                            // treat it as an escape sequence.
+                            // TODO: Could make that optional.
+                            if (i + 1 < str.Length)
+                                if (str[i + 1].Equals(splitterFound))
+                                    i = i + 2;
+                                else
+                                    break;
+                            else
+                                break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
+                        else
+                            i++;
+                    }
+                }
+            }
+
+            return strReturn;
+        }
+
         /// <summary>
         /// Find if a string's in another, but ignore anything within "Quotes".
         /// So if you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
@@ -217,14 +261,22 @@ namespace org.rufwork.extensions
             return foundIt;
         }
 
+        public static string PadLeftWithMax(this string str, int intLength)
+        {
+            str = str.Length > 50 ? str.Substring(0, intLength) : str;
+            return str.PadLeft(intLength);
+        }
+
+        public static Queue<String> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
+        {
+            return strToSplit.SplitSeeingQuotes(strSplittingToken, bIncludeToken, bTrimResults, '\'', '`');
+        }
+
         // Another cheesy regular expression end run.  Don't overcomplicate jive.
         // This should split up strings with multiple commands into, well, multiple commands.
-        // Tokens within backticks are ignored to support MySQL style backtick quotes in 
+        // Remember the respect tokens within backticks to support MySQL style backtick quotes in 
         // statements like CREATE TABLE `DbVersion`...
-        //
-        // Note that the single quote is prioritized.  If you're in a single-quoted string, all
-        // backticks are ignored until you're back out of that string literal.
-        public static Queue<String> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
+        public static Queue<String> SplitSeeingQuotes(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults, params char[] validQuoteChars)
         {
             Queue<string> qReturn = new Queue<string>();
             StringBuilder stringBuilder = new StringBuilder();
@@ -234,23 +286,24 @@ namespace org.rufwork.extensions
             string STRTOSPLIT = strToSplit.ToUpper();
             string STRSPLITTINGTOKEN = strSplittingToken.ToUpper();
 
-            bool inSingleQuotes = false;
-            bool inBackTicks = false;
+            bool inQuotes = false;
+            char chrCurrentSplitter = validQuoteChars[0];   // dummy value.
 
             for (int i = 0; i < strToSplit.Length; i++)
             {
                 // TOOD: Reconsider efficiency of these checks.
-                if (!inSingleQuotes && '`' == strToSplit[i])
+                if (!inQuotes && validQuoteChars.Contains(strToSplit[i]))
                 {
-                    inBackTicks = !inBackTicks;
+                    inQuotes = true;
+                    chrCurrentSplitter = strToSplit[i];
                     stringBuilder.Append(strToSplit[i]);
                 }
-                else if ('\'' == strToSplit[i])
+                else if (inQuotes && strToSplit[i].Equals(chrCurrentSplitter))
                 {
-                    inSingleQuotes = !inSingleQuotes;
+                    inQuotes = false;
                     stringBuilder.Append(strToSplit[i]);
                 }
-                else if (!inSingleQuotes && !inBackTicks
+                else if (!inQuotes
                     && STRSPLITTINGTOKEN[0] == STRTOSPLIT[i]
                     && strToSplit.Length >= i + strSplittingToken.Length
                     && strSplittingToken.Equals(strToSplit.Substring(i, strSplittingToken.Length), StringComparison.CurrentCultureIgnoreCase))
