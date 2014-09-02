@@ -263,7 +263,7 @@ namespace org.rufwork.extensions
 
         public static string PadLeftWithMax(this string str, int intLength)
         {
-            str = str.Length > 50 ? str.Substring(0, intLength) : str;
+            str = str.Length > intLength ? str.Substring(0, intLength) : str;
             return str.PadLeft(intLength);
         }
 
