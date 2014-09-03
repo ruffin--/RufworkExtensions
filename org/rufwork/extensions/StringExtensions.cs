@@ -474,6 +474,8 @@ namespace org.rufwork.extensions
 
         private static bool _NotEmptyString(String s)
         {
+            // TODO: Why not `!string.IsNullOrEmpty(s)`?  Guess we can't get a null from
+            // the split in StringToNonWhitespaceTokens and this is faster?
             return !s.Equals("");
         }
 
@@ -489,6 +491,25 @@ namespace org.rufwork.extensions
         public static string[] StringToNonWhitespaceTokens2(this string strToToke)
         {
             return Regex.Split(strToToke, @"[\(\)\s,]+").Where(s => s != String.Empty).ToArray<string>(); // TODO: Better way of doing this.  Can I add to regex intelligently?
+        }
+
+        public static string[] LinesAsArray(this string str, int intWrapLength = -1)
+        {
+            string[] astrRun = str.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
+
+            if (intWrapLength > 1)
+            {
+                Queue<string> qRun = new Queue<string>();
+                foreach (string strLine in astrRun)
+                {
+                    foreach (string strWrappedLine in strLine.DraconianWrap(intWrapLength).LinesAsArray())
+                    {
+                        qRun.Enqueue(strWrappedLine);
+                    }
+                }
+                astrRun = qRun.ToArray();
+            }
+            return astrRun;
         }
 
         #region CodeProject
