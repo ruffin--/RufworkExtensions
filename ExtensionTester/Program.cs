@@ -13,7 +13,7 @@ namespace ExtensionTester
     {
         static void Main(string[] args)
         {
-            string strContents = @"<li>spam</li>
+            string strContents = @"<li><p>spam</p></li>
                 <p>Lauren Dragan&#8217;s guide at The Wirecutter, <a href=""http://thewirecutter.com/reviews/best-300ish-headphone/"">The Best $300 Over-Ear Headphones</a>, 
                 was updated yesterday, the same day I published my <a href=""http://www.marco.org/headphones-closed-portable"">similar mega-review</a>.
                 <sup id=""fnref:pCv7cBGCg1""><a href=""#fn:pCv7cBGCg1"" rel=""footnote"">1</a></sup></p> 

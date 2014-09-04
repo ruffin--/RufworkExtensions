@@ -572,6 +572,19 @@ namespace org.rufwork.extensions
                          "(<style>).*(</style>)", string.Empty,
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
+                //==============================================================
+                // <li> tag custom behavior -R
+                // TODO: <ol> vs. <ul>
+                //==============================================================
+                // TODO: This is an overly specific fix for <p>'s immediately after <li>.
+                result = System.Text.RegularExpressions.Regex.Replace(result,
+                    @"<li[ ]*[^>]*>(<p[^>]*>|[^a-z0-9A-Z])*", "* ",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                result = System.Text.RegularExpressions.Regex.Replace(result,
+                    @"</li>", "\r",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                //==============================================================
+
                 // insert tabs in spaces of <td> tags
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"<( )*td([^>])*>", "\t",
@@ -595,21 +608,6 @@ namespace org.rufwork.extensions
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"<( )*p([^>])*>", "\r\r",
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-                //==============================================================
-                // Tags that deserve special treatment -R
-                //==============================================================
-                result = System.Text.RegularExpressions.Regex.Replace(result,
-                    @"<li[ ]*[^>]*>", "* ",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                result = System.Text.RegularExpressions.Regex.Replace(result,
-                    @"</li>", "\r",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                // TODO: Need to clean up <li><p>some text</p></li>
-                // I think we just want to handle <li> first, and capture
-                // the first embedded <p>, when once exists, more deliberately.
-                //==============================================================
-                //==============================================================
 
                 // Remove remaining tags like <a>, links, images,
                 // comments etc - anything that's enclosed inside < >
