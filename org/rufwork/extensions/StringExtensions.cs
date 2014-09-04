@@ -493,9 +493,10 @@ namespace org.rufwork.extensions
             return Regex.Split(strToToke, @"[\(\)\s,]+").Where(s => s != String.Empty).ToArray<string>(); // TODO: Better way of doing this.  Can I add to regex intelligently?
         }
 
+        // TODO: Consider having a "max lines to return" governor to make sure we don't get memory crazy.
         public static string[] LinesAsArray(this string str, int intWrapLength = -1)
         {
-            string[] astrRun = str.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
+            string[] astrRun = str.Split(new string[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
             if (intWrapLength > 1)
             {
@@ -576,12 +577,10 @@ namespace org.rufwork.extensions
                          @"<( )*td([^>])*>", "\t",
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
-                // insert line breaks in places of <BR> and <LI> tags
+                // insert line breaks in places of <BR> and <LI>^H^H^H^H^H tags
+                // LI below now. -R
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"<( )*br( )*>", "\r",
-                         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                result = System.Text.RegularExpressions.Regex.Replace(result,
-                         @"<( )*li( )*>", "\r",
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
                 // insert line paragraphs (double line breaks) in place
@@ -592,9 +591,25 @@ namespace org.rufwork.extensions
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"<( )*tr([^>])*>", "\r\r",
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"<( )*p([^>])*>", "\r\r",
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                //==============================================================
+                // Tags that deserve special treatment -R
+                //==============================================================
+                result = System.Text.RegularExpressions.Regex.Replace(result,
+                    @"<li[ ]*[^>]*>", "* ",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                result = System.Text.RegularExpressions.Regex.Replace(result,
+                    @"</li>", "\r",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                // TODO: Need to clean up <li><p>some text</p></li>
+                // I think we just want to handle <li> first, and capture
+                // the first embedded <p>, when once exists, more deliberately.
+                //==============================================================
+                //==============================================================
 
                 // Remove remaining tags like <a>, links, images,
                 // comments etc - anything that's enclosed inside < >
@@ -634,8 +649,26 @@ namespace org.rufwork.extensions
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"&reg;", "(r)",
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                //================================================================================
+                // More chars that I've added -R
+                // TODO: Really need to call a funct each time instead of repeating so much crud.
+                //================================================================================
+                result = System.Text.RegularExpressions.Regex.Replace(result,
+                    @"&#8217;", "'",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                result = System.Text.RegularExpressions.Regex.Replace(result,
+                    @"(&#8220;|&#8221;)", "\"",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                result = System.Text.RegularExpressions.Regex.Replace(result,
+                    @"&#8212;", "--",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                //================================================================================
+                //================================================================================
+
                 // Remove all others. More can be added, see
                 // http://hotwired.lycos.com/webmonkey/reference/special_characters/
+                // Not that the above url dates this stuff at all.
+                // https://web.archive.org/web/20060112044405/http://hotwired.lycos.com/webmonkey/reference/special_characters/
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"&(.{2,6});", string.Empty,
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
