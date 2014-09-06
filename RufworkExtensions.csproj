@@ -44,6 +44,7 @@
     <Compile Include="org\rufwork\extensions\DictionaryOfStringsExtensions.cs" />
     <Compile Include="org\rufwork\extensions\IEnumerableExtensions.cs" />
     <Compile Include="org\rufwork\extensions\ObjectExtensions.cs" />
+    <Compile Include="org\rufwork\extensions\QueueExtensions.cs" />
     <Compile Include="org\rufwork\extensions\StringExtensions.cs" />
     <Compile Include="org\rufwork\extensions\XElementExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
