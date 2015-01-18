@@ -5,3 +5,4 @@ bin/Debug/push.bat
 bin/Release/RufworkExtensions.dll
 buildExtensions.bat
 bin/Debug/RufworkExtensions.dll
+*.orig
