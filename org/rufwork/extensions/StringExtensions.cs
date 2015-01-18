@@ -369,6 +369,8 @@ namespace org.rufwork.extensions
         // Yes, I gave up on RegExp and used a char array.  Sue me.
         // Honestly, this is much more straightforward.  It's like a regexp
         // as an exploded view.
+        // Honestly not sure why this isn't in a "SqlSpecificStringExtensions" class.
+        // It will be soonish.
         public static string[] SqlToTokens(this string strToToke)
         {
             char[] achrSql = strToToke.ToCharArray();
@@ -539,9 +541,38 @@ namespace org.rufwork.extensions
         }
 
 
+        public static string ToQuotedPrintable(this string self)
+        {
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(self);
+            StringBuilder sbInner = new StringBuilder();
+            StringBuilder sbOuter = new StringBuilder();
+
+            foreach (byte byt in bytes)
+            {
+                int charLenQP = (byt >= 33 && byt <= 126 && byt != 61) ? 1 : 3;
+                if (sbInner.Length + charLenQP > 75)
+                {
+                    sbOuter.Append(sbInner + "=\r\n");
+                    sbInner = new StringBuilder();
+                }
+
+                if (1 == charLenQP)
+                {
+                    sbInner.Append((char)byt);
+                }
+                else
+                {
+                    sbInner.Append("=" + byt.ToString("X2"));
+                }
+            }
+            sbOuter.Append(sbInner);
+            return sbOuter.ToString();
+        }
+
         #region CodeProject
         // Source: http://www.codeproject.com/Articles/11902/Convert-HTML-to-Plain-Text
         // License: http://www.codeproject.com/info/cpol10.aspx
+        // Note: This method may have been edited from the version made above.
         public static string StripHTML(this string source)
         {
             try
@@ -634,6 +665,8 @@ namespace org.rufwork.extensions
                 result = System.Text.RegularExpressions.Regex.Replace(result,
                          @"<( )*p([^>])*>", "\r\r",
                          System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                // TODO: Blockquote.
 
                 // Remove remaining tags like <a>, links, images,
                 // comments etc - anything that's enclosed inside < >

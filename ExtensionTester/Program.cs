@@ -24,6 +24,8 @@ namespace ExtensionTester
                 <p>They dismissed my top pick, the AKG K551, as being &#8220;tinny&#8221; and bass-light, but did not test it this time. They didn&#8217;t mention the newer AKG K545 at all, which is unfortunate since it improves on the K551 in some key areas.</p>
                 <hr /> <ol> <li id=""fn:pCv7cBGCg1""> <p>For the same reason: the Blue Mo-Fi embargo lifted yesterday.&#160;<a href=""#fnref:pCv7cBGCg1"" rev=""footnote"">&#8617;</a></p> </li> </ol>";
 
+            Console.WriteLine(strContents.ToQuotedPrintable());
+
             strContents = strContents.StripHTML();
             Console.Write(strContents.Replace('\r','\n'));
             Console.WriteLine();
