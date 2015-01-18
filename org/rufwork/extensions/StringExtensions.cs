@@ -54,6 +54,23 @@ namespace org.rufwork.extensions
             return new string(aReverseMe);
         }
 
+        public static string SafeSubstring(this string self, int intStart, int intLength)
+        {
+            if (intStart > self.Length)
+                return string.Empty;
+            else
+                return self.Substring(intStart, Math.Min(intStart + intLength, self.Length - intStart));
+        }
+
+        // Note that this is by bytes.
+        public static string SafeUTFSubstring(this string self, int intStartCharacter, int intLengthInBytes)
+        {
+            if (intStartCharacter > self.Length)
+                return string.Empty;
+            else
+                return self.Substring(intStartCharacter).CutToUTF8Length(Math.Min(intStartCharacter + intLengthInBytes, self.LengthUTF8()));
+        }
+
         public static int LengthUTF8(this string str)
         {
             return Encoding.UTF8.GetByteCount(str);
@@ -157,7 +174,7 @@ namespace org.rufwork.extensions
             return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
         }
 
-        public static string OperateOnNonQuotedChunks(this string str, 
+        public static string OperateOnNonQuotedChunks(this string str,
             Func<string, string> chunkProcessor,
             params char[] astrSplittingTokens)
         {
