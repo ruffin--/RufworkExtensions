@@ -4,3 +4,5 @@ obj/
 bin/Debug/push.bat
 bin/Release/RufworkExtensions.dll
 buildExtensions.bat
+bin
+RufworkExtensions.userprefs
