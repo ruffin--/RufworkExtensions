@@ -1,8 +1,7 @@
 ExtensionTester/bin/
 ExtensionTester/obj/
 obj/
-bin/Debug/push.bat
-bin/Release/RufworkExtensions.dll
 buildExtensions.bat
-bin/Debug/RufworkExtensions.dll
+bin/
+RufworkExtensions.userprefs
 *.orig
