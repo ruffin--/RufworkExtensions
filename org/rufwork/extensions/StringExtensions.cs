@@ -279,9 +279,12 @@ namespace org.rufwork.extensions
             return foundIt;
         }
 
-        public static string PadLeftWithMax(this string str, int intLength)
+        public static string PadLeftWithMax(this string str, int intLength, bool useStarOnOversize = false)
         {
-            str = str.Length > intLength ? str.Substring(0, intLength) : str;
+            if (str.Length > intLength)
+            {
+                str = useStarOnOversize ? str.Substring(0, intLength - 1) + "*" : str.Substring(0, intLength);
+            }
             return str.PadLeft(intLength);
         }
 
