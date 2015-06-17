@@ -20,5 +20,19 @@ namespace org.rufwork.extensions
             if (!q.Contains(tToAdd))
                 q.Enqueue(tToAdd);
         }
+        public static void EnqueueIfNotContainsCaseInsensitive<T>(this Queue<T> q, T tToAdd)
+        {
+            if (typeof(string) == typeof(T))
+            {
+                string strToAdd = tToAdd.ToString();
+                if (!q.Any(s => s.ToString().ToLower().Equals(strToAdd.ToLower())))
+                    q.Enqueue(tToAdd);
+            }
+            else
+            {
+                q.EnqueueIfNotContains(tToAdd);
+            }
+        }
+
     }
 }

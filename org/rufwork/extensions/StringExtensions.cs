@@ -510,7 +510,13 @@ namespace org.rufwork.extensions
             return astrCmdTokens;
         }
 
-        // What's the advantage over .Split()?  Specific whitespaces?
+        /// <summary>
+        /// Splits the string into an array of non-whitespace tokens
+        /// split by any whitespace. Strips commas and does not return
+        /// tokens that trim to empty strings.
+        /// </summary>
+        /// <param name="strToToke">The string this extension is called upon</param>
+        /// <returns>String array of non-whitespace tokens.</returns>
         public static string[] StringToNonWhitespaceTokens2(this string strToToke)
         {
             return Regex.Split(strToToke, @"[\(\)\s,]+").Where(s => s != String.Empty).ToArray<string>(); // TODO: Better way of doing this.  Can I add to regex intelligently?
