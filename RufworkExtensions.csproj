@@ -48,6 +48,7 @@
     <Compile Include="org\rufwork\extensions\QueueExtensions.cs" />
     <Compile Include="org\rufwork\extensions\StringExtensions.cs" />
     <Compile Include="org\rufwork\extensions\XElementExtensions.cs" />
+    <Compile Include="org\rufwork\utils\ErrHand.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
