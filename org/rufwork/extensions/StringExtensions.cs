@@ -54,6 +54,17 @@ namespace org.rufwork.extensions
             return new string(aReverseMe);
         }
 
+        /// <summary>
+        /// Replacement for string's Substring that won't bork if the start location is past
+        /// the original's length (returns string.Empty in that case) or if the length for the
+        /// substring is longer than what's left after starting at intStart (returns as much string as
+        /// there is after intStart).
+        /// </summary>
+        /// <param name="self">The string being substringed</param>
+        /// <param name="intStart">0-indexed character from which to start the substring.</param>
+        /// <param name="intLength">Length of substring to attempt to take.</param>
+        /// <returns>Returns the normal substring, string.Empty if start is past the end of the string, or 
+        /// as much of the string as there is if the length of the substring would pass the end of `self`.</returns>
         public static string SafeSubstring(this string self, int intStart, int intLength)
         {
             if (intStart > self.Length)
