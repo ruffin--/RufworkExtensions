@@ -19,5 +19,12 @@ namespace org.rufwork.extensions
             if (!l.Contains(tToAdd))
                 l.Add(tToAdd);
         }
+
+        public static bool EqualsX<T>(this IList<T> listA, IList<T> listB)
+        {
+            return listA.Count.Equals(listB.Count)
+                && 0 == listA.Where(o => !listB.Contains(o)).Count()
+                && 0 == listB.Where(o => !listA.Contains(o)).Count();
+        }
     }
 }
