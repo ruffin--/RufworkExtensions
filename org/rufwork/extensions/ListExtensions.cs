@@ -20,7 +20,7 @@ namespace org.rufwork.extensions
                 l.Add(tToAdd);
         }
 
-        public static bool EqualsX<T>(this IList<T> listA, IList<T> listB)
+        public static bool EqualsXList<T>(this IList<T> listA, IList<T> listB)
         {
             return listA.Count.Equals(listB.Count)
                 && 0 == listA.Where(o => !listB.Contains(o)).Count()
