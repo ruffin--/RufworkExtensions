@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="org\rufwork\extensions\DataTableExtensions.cs" />
     <Compile Include="org\rufwork\extensions\DateTimeNullableExtensions.cs" />
     <Compile Include="org\rufwork\extensions\DictionaryOfStringsExtensions.cs" />
     <Compile Include="org\rufwork\extensions\IEnumerableExtensions.cs" />
