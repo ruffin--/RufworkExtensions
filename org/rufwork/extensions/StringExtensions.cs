@@ -133,18 +133,6 @@ namespace org.rufwork.extensions
                 RegexOptions.IgnoreCase);
         }
 
-        /// <summary>
-        /// Will call ContainsOutsideOfQuotes with ignore case, quotes are '
-        ///
-        /// Note: I'm not handling stringComparison yet.
-        /// </summary>
-        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
-        /// <returns></returns>
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind)
-        {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, '\'');
-        }
-
         public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore)
         {
             string strRun = string.Empty;
@@ -169,20 +157,6 @@ namespace org.rufwork.extensions
         {
             Regex regexp = new Regex(@"\s");
             return regexp.IsMatch(str);
-        }
-
-        /// <summary>
-        /// Will call ContainsOutsideOfQuotes with ignore case.
-        ///
-        /// Note: I'm not handling stringComparison yet.
-        /// </summary>
-        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
-        /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
-        /// escaped string.</param>
-        /// <returns>True if it's there, false if it isn't.</returns>
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind, params char[] astrSplittingTokens)
-        {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
         }
 
         public static string OperateOnNonQuotedChunks(this string str,
@@ -230,8 +204,36 @@ namespace org.rufwork.extensions
         }
 
         /// <summary>
-        /// Find if a string's in another, but ignore anything within "Quotes".
-        /// So if you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
+        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// This overload will use default quote character of ' and a
+        /// StringComparison type of CurrentCultureIgnorecase.
+        /// </summary>
+        /// <param name="str">The string being searched; `this`</param>
+        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
+        /// <returns>True if string is found, false is not.</returns>
+        public static bool ContainsOutsideOfQuotes(this string str, string strToFind)
+        {
+            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, '\'');
+        }
+
+        /// <summary>
+        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// This overload will accepts any number of splitting tokens as trailing params, and uses
+        /// StringComparison type of CurrentCultureIgnorecase.
+        /// </summary>
+        /// <param name="str">The string being searched; `this`</param>
+        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
+        /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
+        /// escaped string.</param>
+        /// <returns>True if it's there, false if it isn't.</returns>
+        public static bool ContainsOutsideOfQuotes(this string str, string strToFind, params char[] astrSplittingTokens)
+        {
+            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
+        }
+
+        /// <summary>
+        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// If the double-quote is passed in as a "splitting token", and you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
         /// "test" is within ' and '.
         ///
         /// Note: I'm not handling stringComparison yet.
