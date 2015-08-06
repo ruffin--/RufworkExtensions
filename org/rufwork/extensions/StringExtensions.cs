@@ -499,6 +499,11 @@ namespace org.rufwork.extensions
             return Regex.Replace(strIn, @"\r\n?|\n", strReplacement);
         }
 
+        public static string FlattenWhitespace(this string strIn)
+        {
+            return System.Text.RegularExpressions.Regex.Replace(strIn, @"[\s\n]+", " ");
+        }
+
         public static string ScrubValue(this string strToScrub)
         {
             string strReturn = strToScrub;

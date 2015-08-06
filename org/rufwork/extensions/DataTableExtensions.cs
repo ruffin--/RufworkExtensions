@@ -12,24 +12,22 @@ namespace org.rufwork.extensions
         /// This method will take the original DataTable and return another
         /// DataTable with the as-specified first `n` rows from the original in it.
         /// Note that the original DataTable needs to, obviously, already be sorted.
-        /// TODO: There's got to be a better way to do this, especially if we weren't
-        /// simply taking the first N, but WHERE-ing somehow.
+        /// TODO: There's got to be a better way to do this.
         /// </summary>
         /// <param name="t">The `this` Datatable</param>
         /// <param name="n">The number of rows to take.</param>
         /// <returns></returns>
         public static DataTable SelectTopNRows(this DataTable t, int n)
         {
-            DataRow[] aRows = t.Select("");
-            DataTable tableRet = t.Clone();
+            return t.SkipTakeToTable(0, n);
+        }
 
-            for (int i = 0; i < aRows.Length; i++)
-            {
-                if (i >= n) break;
-                tableRet.Rows.Add(aRows[i].ItemArray);
-            }
+        public static DataTable SkipTakeToTable(this DataTable t, int intSkip, int intTake)
+        {
+            DataRow[] aRowsAll = t.Select("");
+            DataRow[] aRowsTake = aRowsAll.Skip(intSkip).Take(intTake).ToArray();
 
-            return tableRet;
+            return aRowsTake.CopyToDataTable();
         }
     }
 }
