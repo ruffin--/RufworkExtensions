@@ -21,21 +21,18 @@ namespace com.rufwork.utils
 
         public static void LogErr(string strErrMsg, string strLocation, string strAddlInfo = "")
         {
-            string strErr = "Error in " + strLocation + "\n\t" + strErrMsg;
-
             if (!string.IsNullOrWhiteSpace(strAddlInfo))
             {
-                strErr += "\t" + strAddlInfo;
+                strErrMsg += "\t" + strAddlInfo;
             }
-
-            ErrHand.logMsg(strErr);
+            ErrHand.LogMsg(strErrMsg, strLocation);
 
             // Check if we have a directory set up for logging errors.
             if (!string.IsNullOrWhiteSpace(ErrHand.StrLogFileHome) && System.IO.Directory.Exists(ErrHand.StrLogFileHome))
             {
                 DateTime now = DateTime.Now;
                 string strErrFileLoc = System.IO.Path.Combine(ErrHand.StrLogFileHome, now.ToString("yyyy-MM-dd"));
-                System.IO.File.AppendAllText(strErrFileLoc, now.ToString("yyyy-MM-dd HH:mm:ss.fff\t" + strErr));
+                System.IO.File.AppendAllText(strErrFileLoc, now.ToString("yyyy-MM-dd HH:mm:ss.fff\t") + "Error in " + strLocation + "\n\t" + strErrMsg);
             }
         }
 
@@ -46,15 +43,15 @@ namespace com.rufwork.utils
 
         public static void LogMsg(string strMsg, string strLocation = "")
         {
-            ErrHand.logMsg(strMsg);
+            ErrHand.LogMsg(strMsg);
 
             if (!string.IsNullOrWhiteSpace(strLocation))
             {
-                ErrHand.logMsg("\t" + strLocation);
+                ErrHand.LogMsg("\t" + strLocation);
             }
         }
 
-        private static void logMsg(string strMessage)
+        private static void LogMsg(string strMessage)
         {
             System.Diagnostics.Debug.Print(strMessage);
             Console.WriteLine(strMessage);
