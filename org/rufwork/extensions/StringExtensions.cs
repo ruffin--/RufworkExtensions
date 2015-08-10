@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
+using com.rufwork.utils;
 
 namespace org.rufwork.extensions
 {
@@ -52,6 +53,13 @@ namespace org.rufwork.extensions
             char[] aReverseMe = str.ToCharArray();
             Array.Reverse(aReverseMe);
             return new string(aReverseMe);
+        }
+
+        public static string ReplaceSingleChar(this string str, int intCharIndex, char chr)
+        {
+            char[] achr = str.ToCharArray();
+            achr[intCharIndex] = chr;
+            return new string(achr);
         }
 
         /// <summary>
@@ -292,13 +300,60 @@ namespace org.rufwork.extensions
             return foundIt;
         }
 
-        public static string PadLeftWithMax(this string str, int intLength, bool useStarOnOversize = false)
+        private static string _AsteriskizeString(string str, int intLength, bool useStarOnOversize, bool displayEnd)
+        {
+            str = displayEnd ? str.Substring(str.Length - intLength) : str.Substring(0, intLength);
+            if (useStarOnOversize) str = displayEnd
+                ? str.ReplaceSingleChar(0, '*')
+                : str.ReplaceSingleChar(str.Length - 1, '*');
+
+            return str;
+        }
+
+        /// <summary>
+        /// Takes the current string and, if it's over the total length sent in intLength,
+        /// truncates to the pad value. If it's under the length in intLength, a coventional
+        /// `PadLeft(intLength)` will be performed.
+        /// </summary>
+        /// <param name="str">The string being padded or limited.</param>
+        /// <param name="intLength">The length to which to pad or limit</param>
+        /// <param name="useStarOnOversize">If true and str is longer than intLength, str will be truncated
+        /// to intLength - 1 and then an asterisk will be added onto the end. So "This is a long line" maxed
+        /// at 5 would return "This*".</param>
+        /// <param name="displayEnd">There are times it might be useful to display the end of a string rather
+        /// than the beginning when all of the string cannot be displayed. If so, set this to true.</param>
+        /// <returns>The limited or padded (or full) string.</returns>
+        public static string PadLeftWithMax(this string str, int intLength, bool useStarOnOversize = false, bool displayEnd = false)
         {
             if (str.Length > intLength)
-            {
-                str = useStarOnOversize ? str.Substring(0, intLength - 1) + "*" : str.Substring(0, intLength);
-            }
-            return str.PadLeft(intLength);
+                str = _AsteriskizeString(str, intLength, useStarOnOversize, displayEnd);
+            else
+                str = str.PadLeft(intLength);
+
+            return str;
+        }
+
+        /// <summary>
+        /// Takes the current string and, if it's over the total length sent in intLength,
+        /// truncates to the pad value. If it's under the length in intLength, a coventional
+        /// `PadRight(intLength)` will be performed.
+        /// </summary>
+        /// <param name="str">The string being padded or limited.</param>
+        /// <param name="intLength">The length to which to pad or limit</param>
+        /// <param name="useStarOnOversize">If true and str is longer than intLength, str will be truncated
+        /// to intLength - 1 and then an asterisk will be added onto the end. So "This is a long line" maxed
+        /// at 5 would return "This*".</param>
+        /// <param name="displayEnd">There are times it might be useful to display the end of a string rather
+        /// than the beginning when all of the string cannot be displayed. If so, set this to true.</param>
+        /// <returns>The limited or padded (or full) string.</returns>
+        public static string PadRightWithMax(this string str, int intLength, bool useStarOnOversize = false, bool displayEnd = false)
+        {
+            if (str.Length > intLength)
+                str = _AsteriskizeString(str, intLength, useStarOnOversize, displayEnd);
+            else
+                str = str.PadRight(intLength);
+
+            return str;
         }
 
         public static Queue<String> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
@@ -616,11 +671,13 @@ namespace org.rufwork.extensions
         #region CodeProject
         // Source: http://www.codeproject.com/Articles/11902/Convert-HTML-to-Plain-Text
         // License: http://www.codeproject.com/info/cpol10.aspx
-        // Note: This method may have been edited from the version made above.
+        // Note: This method has been edited from the version referenced above.
         public static string StripHTML(this string source)
         {
             try
             {
+                if (string.IsNullOrEmpty(source)) return null;
+
                 string result;
 
                 // Remove HTML Development formatting
@@ -823,6 +880,7 @@ namespace org.rufwork.extensions
             }
             catch (Exception e)
             {
+                ErrHand.LogErr(e, "StripHTML");
                 throw e;
             }
         }
