@@ -668,6 +668,35 @@ namespace org.rufwork.extensions
             return sbOuter.ToString();
         }
 
+        /// <summary>
+        /// Cleans a string to insert into SQL so that it shouldn't allow
+        /// SQL injection when run (but might). Not guaranteeing it's 
+        /// particularly robust at this point, I don't think.
+        /// Adds single quotes to ends of string.
+        /// </summary>
+        /// <param name="strIn">The string being cleaned. Should NOT be the entire SQL string, but just what might be pushed into a quoted value.</param>
+        /// <returns>The cleaned, now single-quoted SQL string value.</returns>
+        public static string DbCleanAndQuote(this string strIn)
+        {
+            return _dbCleanAndQuote(strIn, true);
+        }
+
+        public static string DbCleanNoQuote(this string strIn)
+        {
+            return _dbCleanAndQuote(strIn, false);
+        }
+
+        private static string _dbCleanAndQuote(string strIn, bool addQuotes = true)
+        {
+            strIn = Regex.Replace(strIn, @"\r\n?|\n", "\n");
+            strIn = strIn.Replace("'", "''");
+            strIn = strIn.Replace("" + (char)8217, "''");
+            strIn = strIn.Replace(";", @"\;");
+            strIn = addQuotes ? "'" + strIn + "'" : strIn;
+
+            return strIn;
+        }
+
         #region CodeProject
         // Source: http://www.codeproject.com/Articles/11902/Convert-HTML-to-Plain-Text
         // License: http://www.codeproject.com/info/cpol10.aspx
