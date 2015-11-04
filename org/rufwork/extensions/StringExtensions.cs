@@ -239,6 +239,11 @@ namespace org.rufwork.extensions
             return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
         }
 
+        public static bool ContainsOutsideOfQuotes(this string str, string strToFind, StringComparison stringComparison)
+        {
+            return str.ContainsOutsideOfQuotes(strToFind, stringComparison, new[] {'\''});
+        }
+
         /// <summary>
         /// Looks for a string that isn't within a quoted section of the parent string. 
         /// If the double-quote is passed in as a "splitting token", and you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
@@ -255,6 +260,74 @@ namespace org.rufwork.extensions
             StringComparison stringComparison,
             params char[] astrSplittingTokens)
         {
+            switch (stringComparison)
+            {
+                case StringComparison.CurrentCultureIgnoreCase:
+                case StringComparison.InvariantCultureIgnoreCase:
+                case StringComparison.OrdinalIgnoreCase:
+                    return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, astrSplittingTokens);
+
+                default:
+                    return _containsOutsideOfQuotesCaseSENSITIVE(str, strToFind, astrSplittingTokens);
+            }
+        }
+
+        // It's probably the sad tragedy of micro-optimization theater (http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/),
+        // but I don't want to be checking a bCaseSensitive switch on every comparision, so I'm splitting the 
+        // engines up.
+        // TODO: Insensitive probably needs some optimization. Eg, if anglais, we can do lots
+        // of ASCII-ish cheats, right? Any rate, need to consider optimization.
+        private static bool _containsOutsideOfQuotesCaseINsensitive(string str, string strToFind, params char[] astrSplittingTokens)
+        {
+            bool foundIt = false;
+
+            for (int i = 0; i < str.Length; i++)
+            {
+                while (i < str.Length && !astrSplittingTokens.ContainsCaseInsensitive(str[i]) && !str[i].EqualsCaseInsensitive(strToFind[0]))
+                    i++;
+
+                if (i < str.Length)
+                {
+                    // Should splitters also be case insensitive? I'm going to say yes.
+                    if (astrSplittingTokens.ContainsCaseInsensitive(str[i]))
+                    {
+                        // Remember which of the astrSplittingTokens was found to find the right closing char.
+                        char splitterFound = str[i];
+                        i++;
+                        while (i < str.Length)
+                        {
+                            if (str[i].EqualsCaseInsensitive(splitterFound))
+                                if (i + 1 < str.Length)
+                                    if (str[i + 1].EqualsCaseInsensitive(splitterFound))
+                                        i = i + 2;
+                                    else
+                                        break;
+                                else
+                                    break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
+                            else
+                                i++;
+                         }
+                    }
+                    else
+                    {
+                        // else this should be equal to the first char in the search string.
+                        int foundStart = i;
+                        while (i < str.Length && i - foundStart < strToFind.Length && str[i].EqualsCaseInsensitive(strToFind[i - foundStart]))
+                            i++;
+                        if (i - foundStart == strToFind.Length)
+                        {
+                            foundIt = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return foundIt;
+        }
+        
+        private static bool _containsOutsideOfQuotesCaseSENSITIVE(string str, string strToFind, params char[] astrSplittingTokens)
+        {
             bool foundIt = false;
 
             for (int i = 0; i < str.Length; i++)
@@ -266,6 +339,7 @@ namespace org.rufwork.extensions
                 {
                     if (astrSplittingTokens.Contains(str[i]))
                     {
+                        // Remember which of the astrSplittingTokens was found to find the right closing char.
                         char splitterFound = str[i];
                         i++;
                         while (i < str.Length)
@@ -672,7 +746,7 @@ namespace org.rufwork.extensions
         /// Cleans a string to insert into SQL so that it shouldn't allow
         /// SQL injection when run (but might). Not guaranteeing it's 
         /// particularly robust at this point, I don't think.
-        /// Adds single quotes to ends of string.
+        /// Adds single quotes to both ends of the string (start and end).
         /// </summary>
         /// <param name="strIn">The string being cleaned. Should NOT be the entire SQL string, but just what might be pushed into a quoted value.</param>
         /// <returns>The cleaned, now single-quoted SQL string value.</returns>

@@ -13,6 +13,9 @@ namespace ExtensionTester
     {
         static void Main(string[] args)
         {
+            string strClause = "id = 3 or 4";
+            Console.WriteLine(strClause.ContainsOutsideOfQuotes("OR", StringComparison.CurrentCultureIgnoreCase));
+            
             string hash = "beau@dentedreality.com.au".Md5Hash();
             Console.WriteLine (hash);
 
