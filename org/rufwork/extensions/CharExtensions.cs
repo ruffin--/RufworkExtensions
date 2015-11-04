@@ -19,7 +19,7 @@ namespace org.rufwork.extensions
             switch (stringComparison)
             {
                 case StringComparison.CurrentCultureIgnoreCase:
-                case StringComparison.InvariantCultureIgnoreCase:
+                //case StringComparison.InvariantCultureIgnoreCase: // Not valid in PCL, apparently.
                 case StringComparison.OrdinalIgnoreCase:
                     return chrOrig.EqualsCaseInsensitive(chrCompare);
 

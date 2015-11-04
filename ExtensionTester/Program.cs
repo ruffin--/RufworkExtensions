@@ -16,9 +16,6 @@ namespace ExtensionTester
             string strClause = "id = 3 or 4";
             Console.WriteLine(strClause.ContainsOutsideOfQuotes("OR", StringComparison.CurrentCultureIgnoreCase));
             
-            string hash = "beau@dentedreality.com.au".Md5Hash();
-            Console.WriteLine (hash);
-
             string strContents = @"<li><p>spam</p></li>
                 <p>Lauren Dragan&#8217;s guide at The Wirecutter, <a href=""http://thewirecutter.com/reviews/best-300ish-headphone/"">The Best $300 Over-Ear Headphones</a>, 
                 was updated yesterday, the same day I published my <a href=""http://www.marco.org/headphones-closed-portable"">similar mega-review</a>.

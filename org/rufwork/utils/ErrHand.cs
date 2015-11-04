@@ -10,7 +10,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace com.rufwork.utils
+using org.rufwork.shims.io;
+
+namespace org.rufwork.utils
 {
     // Kinda nervous putting this in an "Extensions" project, but I think it works, since
     // we might want to handle errors there too. I do want a standardized location for all
@@ -18,6 +20,7 @@ namespace com.rufwork.utils
     public class ErrHand
     {
         public static string StrLogFileHome = "";
+        public static ILogToFile Logger = null;
 
         public static void LogErr(string strErrMsg, string strLocation, string strAddlInfo = "")
         {
@@ -27,13 +30,9 @@ namespace com.rufwork.utils
             }
             ErrHand.LogMsg(strErrMsg, strLocation);
 
-            // Check if we have a directory set up for logging errors.
-            if (!string.IsNullOrWhiteSpace(ErrHand.StrLogFileHome) && System.IO.Directory.Exists(ErrHand.StrLogFileHome))
-            {
-                DateTime now = DateTime.Now;
-                string strErrFileLoc = System.IO.Path.Combine(ErrHand.StrLogFileHome, now.ToString("yyyy-MM-dd"));
-                System.IO.File.AppendAllText(strErrFileLoc, now.ToString("yyyy-MM-dd HH:mm:ss.fff\t") + "Error in " + strLocation + "\n\t" + strErrMsg);
-            }
+            DateTime now = DateTime.Now;
+            string strErrLogMsg = now.ToString("yyyy-MM-dd HH:mm:ss.fff\t") + "Error in " + strLocation + "\n\t" + strErrMsg;
+            ErrHand.Logger.AppendAllText(ErrHand.StrLogFileHome, strErrLogMsg);
         }
 
         public static void LogErr(Exception e, string strLocation, string strAddlInfo = "")
@@ -49,12 +48,6 @@ namespace com.rufwork.utils
             {
                 ErrHand.LogMsg("\t" + strLocation);
             }
-        }
-
-        private static void LogMsg(string strMessage)
-        {
-            System.Diagnostics.Debug.Print(strMessage);
-            Console.WriteLine(strMessage);
         }
     }
 }

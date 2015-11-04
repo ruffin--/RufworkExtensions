@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
+using org.rufwork.shims.data;
 
 namespace org.rufwork.extensions
 {
@@ -24,7 +21,7 @@ namespace org.rufwork.extensions
 
         public static DataTable SkipTakeToTable(this DataTable t, int intSkip, int intTake)
         {
-            DataRow[] aRowsAll = t.Select("");
+            DataRow[] aRowsAll = t.Select();
             DataRow[] aRowsTake = aRowsAll.Skip(intSkip).Take(intTake).ToArray();
 
             return aRowsTake.CopyToDataTable();

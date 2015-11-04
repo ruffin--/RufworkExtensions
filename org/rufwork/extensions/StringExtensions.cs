@@ -11,8 +11,9 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-using com.rufwork.utils;
+//using System.Security.Cryptography;
+
+using org.rufwork.utils;
 
 namespace org.rufwork.extensions
 {
@@ -122,7 +123,7 @@ namespace org.rufwork.extensions
                 {
                     byte[] cutValue = new byte[bytePointer];
                     Array.Copy(byteArray, cutValue, bytePointer);
-                    returnValue = Encoding.UTF8.GetString(cutValue);
+                    returnValue = Encoding.UTF8.GetString(cutValue, 0, cutValue.Length);
                 }
             }
             else
@@ -263,7 +264,7 @@ namespace org.rufwork.extensions
             switch (stringComparison)
             {
                 case StringComparison.CurrentCultureIgnoreCase:
-                case StringComparison.InvariantCultureIgnoreCase:
+                //case StringComparison.InvariantCultureIgnoreCase: // not valid in PCL, apparently.
                 case StringComparison.OrdinalIgnoreCase:
                     return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, astrSplittingTokens);
 
@@ -524,7 +525,7 @@ namespace org.rufwork.extensions
                     strOut += strToClean[i];
             }
             strOut += strToClean[strToClean.Length - 1];
-            //Console.WriteLine(strOut);
+            //Logger.WriteLine(strOut);
             return strOut;
         }
 
@@ -688,31 +689,6 @@ namespace org.rufwork.extensions
             }
             return astrRun;
         }
-
-        // from http://msdn.microsoft.com/en-us/library/system.security.cryptography.md5(v=vs.110).aspx
-        public static string Md5Hash(this string str)
-        {
-            using (MD5 md5Hash = MD5.Create())
-            {
-                // Convert the input string to a byte array and compute the hash. 
-                byte[] data = md5Hash.ComputeHash(Encoding.UTF8.GetBytes(str));
-
-                // Create a new Stringbuilder to collect the bytes 
-                // and create a string.
-                StringBuilder sBuilder = new StringBuilder();
-
-                // Loop through each byte of the hashed data  
-                // and format each one as a hexadecimal string. 
-                for (int i = 0; i < data.Length; i++)
-                {
-                    sBuilder.Append(data[i].ToString("x2"));
-                }
-
-                // Return the hexadecimal string. 
-                return sBuilder.ToString();
-            }
-        }
-
 
         public static string ToQuotedPrintable(this string self)
         {
