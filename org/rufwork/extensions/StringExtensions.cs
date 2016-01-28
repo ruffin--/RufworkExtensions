@@ -747,6 +747,16 @@ namespace org.rufwork.extensions
             return strIn;
         }
 
+        public static string RemoveLastNewLine(this string str)
+        {
+            if (str.EndsWith(System.Environment.NewLine))
+            {
+                str = str.Substring(0, str.Length - System.Environment.NewLine.Length);
+            }
+
+            return str;
+        }
+
         #region CodeProject
         // Source: http://www.codeproject.com/Articles/11902/Convert-HTML-to-Plain-Text
         // License: http://www.codeproject.com/info/cpol10.aspx
