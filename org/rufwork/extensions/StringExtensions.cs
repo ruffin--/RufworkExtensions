@@ -72,7 +72,7 @@ namespace org.rufwork.extensions
         /// <param name="self">The string being substringed</param>
         /// <param name="intStart">0-indexed character from which to start the substring.</param>
         /// <param name="intLength">Length of substring to attempt to take.</param>
-        /// <returns>Returns the normal substring, string.Empty if start is past the end of the string, or 
+        /// <returns>Returns the normal substring, string.Empty if start is past the end of the string, or
         /// as much of the string as there is if the length of the substring would pass the end of `self`.</returns>
         public static string SafeSubstring(this string self, int intStart, int intLength)
         {
@@ -193,7 +193,7 @@ namespace org.rufwork.extensions
                     while (i < str.Length)
                     {
                         if (str[i].Equals(splitterFound))
-                            // If we have two of the same splitter char in a row, we're going to 
+                            // If we have two of the same splitter char in a row, we're going to
                             // treat it as an escape sequence.
                             // TODO: Could make that optional.
                             if (i + 1 < str.Length)
@@ -213,7 +213,7 @@ namespace org.rufwork.extensions
         }
 
         /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// Looks for a string that isn't within a quoted section of the parent string.
         /// This overload will use default quote character of ' and a
         /// StringComparison type of CurrentCultureIgnorecase.
         /// </summary>
@@ -226,7 +226,7 @@ namespace org.rufwork.extensions
         }
 
         /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// Looks for a string that isn't within a quoted section of the parent string.
         /// This overload will accepts any number of splitting tokens as trailing params, and uses
         /// StringComparison type of CurrentCultureIgnorecase.
         /// </summary>
@@ -246,7 +246,7 @@ namespace org.rufwork.extensions
         }
 
         /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// Looks for a string that isn't within a quoted section of the parent string.
         /// If the double-quote is passed in as a "splitting token", and you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
         /// "test" is within ' and '.
         ///
@@ -274,7 +274,7 @@ namespace org.rufwork.extensions
         }
 
         // It's probably the sad tragedy of micro-optimization theater (http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/),
-        // but I don't want to be checking a bCaseSensitive switch on every comparision, so I'm splitting the 
+        // but I don't want to be checking a bCaseSensitive switch on every comparision, so I'm splitting the
         // engines up.
         // TODO: Insensitive probably needs some optimization. Eg, if anglais, we can do lots
         // of ASCII-ish cheats, right? Any rate, need to consider optimization.
@@ -326,7 +326,7 @@ namespace org.rufwork.extensions
 
             return foundIt;
         }
-        
+
         private static bool _containsOutsideOfQuotesCaseSENSITIVE(string str, string strToFind, params char[] astrSplittingTokens)
         {
             bool foundIt = false;
@@ -373,6 +373,11 @@ namespace org.rufwork.extensions
             }
 
             return foundIt;
+        }
+
+        public static string[] Split(this string str, string splitter)
+        {
+            return str.Split(new string[] { splitter }, StringSplitOptions.RemoveEmptyEntries);
         }
 
         private static string _AsteriskizeString(string str, int intLength, bool useStarOnOversize, bool displayEnd)
@@ -438,7 +443,7 @@ namespace org.rufwork.extensions
 
         // Another cheesy regular expression end run.  Don't overcomplicate jive.
         // This should split up strings with multiple commands into, well, multiple commands.
-        // Remember the respect tokens within backticks to support MySQL style backtick quotes in 
+        // Remember the respect tokens within backticks to support MySQL style backtick quotes in
         // statements like CREATE TABLE `DbVersion`...
         public static Queue<String> SplitSeeingQuotes(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults, params char[] validQuoteChars)
         {
@@ -720,7 +725,7 @@ namespace org.rufwork.extensions
 
         /// <summary>
         /// Cleans a string to insert into SQL so that it shouldn't allow
-        /// SQL injection when run (but might). Not guaranteeing it's 
+        /// SQL injection when run (but might). Not guaranteeing it's
         /// particularly robust at this point, I don't think.
         /// Adds single quotes to both ends of the string (start and end).
         /// </summary>
@@ -747,14 +752,77 @@ namespace org.rufwork.extensions
             return strIn;
         }
 
-        public static string RemoveLastNewLine(this string str)
+        // For some reason, the PCL wasn't supporting TakeWhile, so I skipped on this LINQ heavy solution:
+        // string toPrepend = string.Concat(value.TakeWhile(c => c.Equals(' '))); // ...
+        public static Tuple<string, string> PullLeadingAndTrailingSpaces(this string value)
         {
-            if (str.EndsWith(System.Environment.NewLine))
+            // I don't normally return like this. Sorry.
+            if (string.IsNullOrEmpty(value))
+                return new Tuple<string, string>(string.Empty, string.Empty);
+
+            if (string.IsNullOrWhiteSpace(value))
+                return new Tuple<string, string>(value, string.Empty);
+
+            int prependCount = 0;
+            int appendCount = 0;
+
+            int i = 0;
+            while (value[i++].Equals(' '))
+                prependCount++;
+
+            i = value.Length - 1;
+            while (value[i--].Equals(' '))
+                appendCount++;
+
+            return new Tuple<string, string>(new string(' ', prependCount), new string(' ', appendCount));
+        }
+
+        public static string RemoveLastNewLine(this string str, bool removeCRorNLifNoPlatformNL = false)
+        {
+            // TODO: I'm having trouble with NewLines and UWP TextBox.SelectedText, which
+            // seems to blast \n characters, therefore removeCRorNLifNoPlatNL. See...
+            // http://stackoverflow.com/questions/35138047/textbox-text-substringtextbox-selectionstart-doesnt-work-because-selectedtext
+            if (str.EndsWith(Environment.NewLine))
             {
-                str = str.Substring(0, str.Length - System.Environment.NewLine.Length);
+                str = str.Substring(0, str.Length - Environment.NewLine.Length);
+            }
+            else
+            {
+                if (str.EndsWithCRorNL() && removeCRorNLifNoPlatformNL)
+                {
+                    str = str.Substring(0, str.Length - 1);
+                }
             }
 
             return str;
+        }
+
+        public static string DeleteLastNChars(this string str, int charsToDelete)
+        {
+            return str.Remove(str.Length - charsToDelete);
+        }
+
+        public static string RemoveLeadingNewLine(this string str)
+        {
+            if (str.StartsWith(Environment.NewLine))
+            {
+                str = str.Substring(Environment.NewLine.Length);
+            }
+
+            return str;
+        }
+
+        public static string NormalizeNewlineToCarriageReturn(this string str)
+        {
+            str = str.Replace("\r\n", "\r");
+            str = str.Replace("\n", "\r");
+            return str;
+        }
+
+        public static bool EndsWithCRorNL(this string str)
+        {
+            char[] acCrLF = { '\n', '\r' };
+            return acCrLF.Contains(str[str.Length-1]);
         }
 
         #region CodeProject
