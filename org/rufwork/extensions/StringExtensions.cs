@@ -821,8 +821,15 @@ namespace org.rufwork.extensions
 
         public static bool EndsWithCRorNL(this string str)
         {
-            char[] acCrLF = { '\n', '\r' };
-            return acCrLF.Contains(str[str.Length-1]);
+            bool ret = false;
+
+            if (!string.IsNullOrEmpty(str))
+            {
+                char[] acCrLF = { '\n', '\r' };
+                ret = acCrLF.Contains(str[str.Length - 1]);
+            }
+
+            return ret;
         }
 
         #region CodeProject
