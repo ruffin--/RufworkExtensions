@@ -19,260 +19,7 @@ namespace org.rufwork.extensions
 {
     public static class StringExtensions
     {
-        public static string DraconianWrap(this string str, int lineLength, string lineEnding = "\n")
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            int stringPos = 0;
-            while (stringPos < str.Length)
-            {
-                int substringLength = stringPos + lineLength > str.Length ? str.Length - stringPos : lineLength;
-                string substring = str.Substring(stringPos, substringLength);
-                stringBuilder.Append(substring + lineEnding);
-                stringPos += substringLength;
-            }
-            return stringBuilder.ToString();
-        }
-
-        public static Stream ToStream(this string str)
-        {
-            MemoryStream stream = new MemoryStream();
-            StreamWriter writer = new StreamWriter(stream);
-            writer.Write(str);
-            writer.Flush();
-            stream.Position = 0;
-            return stream;
-        }
-
-        // Note that this doesn't work with Hebrew characters with vowels,
-        // apparently (though you could argue it kind of does, iiuc)
-        // See stackoverflow.com/questions/15029238
-        public static string ReverseString(this string str)
-        {
-            if (null == str)
-                return null;
-
-            char[] aReverseMe = str.ToCharArray();
-            Array.Reverse(aReverseMe);
-            return new string(aReverseMe);
-        }
-
-        public static string ReplaceSingleChar(this string str, int intCharIndex, char chr)
-        {
-            char[] achr = str.ToCharArray();
-            achr[intCharIndex] = chr;
-            return new string(achr);
-        }
-
-        /// <summary>
-        /// Replacement for string's Substring that won't bork if the start location is past
-        /// the original's length (returns string.Empty in that case) or if the length for the
-        /// substring is longer than what's left after starting at intStart (returns as much string as
-        /// there is after intStart).
-        /// </summary>
-        /// <param name="self">The string being substringed</param>
-        /// <param name="intStart">0-indexed character from which to start the substring.</param>
-        /// <param name="intLength">Length of substring to attempt to take.</param>
-        /// <returns>Returns the normal substring, string.Empty if start is past the end of the string, or
-        /// as much of the string as there is if the length of the substring would pass the end of `self`.</returns>
-        public static string SafeSubstring(this string self, int intStart, int intLength)
-        {
-            if (intStart > self.Length)
-                return string.Empty;
-            else
-                return self.Substring(intStart, Math.Min(intStart + intLength, self.Length - intStart));
-        }
-
-        // Note that this is by bytes.
-        public static string SafeUTFSubstring(this string self, int intStartCharacter, int intLengthInBytes)
-        {
-            if (intStartCharacter > self.Length)
-                return string.Empty;
-            else
-                return self.Substring(intStartCharacter).CutToUTF8Length(Math.Min(intStartCharacter + intLengthInBytes, self.LengthUTF8()));
-        }
-
-        public static int LengthUTF8(this string str)
-        {
-            return Encoding.UTF8.GetByteCount(str);
-        }
-
-        // Using `ToByte` just to illustrate cleanly that we're ANDing on
-        // the leading bit.
-        // Note that C# 6.0 might allow "real" binary representations:
-        // http://roslyn.codeplex.com/wikipage?title=Language%20Feature%20Status
-        public static string CutToUTF8Length(this string str, int byteLength)
-        {
-            byte[] byteArray = Encoding.UTF8.GetBytes(str);
-            string returnValue = string.Empty;
-
-            if (byteArray.Length > byteLength)
-            {
-                int bytePointer = byteLength;
-
-                // Check high bit to see if we're [potentially] in the middle of a multi-byte char
-                if (bytePointer >= 0 && (byteArray[bytePointer] & Convert.ToByte("10000000", 2)) > 0)
-                {
-                    while (bytePointer >= 0 && Convert.ToByte("11000000", 2) != (byteArray[bytePointer] & Convert.ToByte("11000000", 2)))
-                    {
-                        bytePointer--;
-                    }
-                }
-
-                // See if we had 1s in the high bit all the way back. If so, we're toast. Return empty string.
-                if (0 != bytePointer)
-                {
-                    byte[] cutValue = new byte[bytePointer];
-                    Array.Copy(byteArray, cutValue, bytePointer);
-                    returnValue = Encoding.UTF8.GetString(cutValue, 0, cutValue.Length);
-                }
-            }
-            else
-            {
-                returnValue = str;
-            }
-
-            return returnValue;
-        }
-
-        public static string ReplaceCaseInsensitiveFind(this string str, string findMe, string newValue)
-        {
-            return Regex.Replace(str,
-                Regex.Escape(findMe),
-                Regex.Replace(newValue, "\\$[0-9]+", @"$$$0"),
-                RegexOptions.IgnoreCase);
-        }
-
-        public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore)
-        {
-            string strRun = string.Empty;
-
-            if (-1 < str.IndexOf(delimiterStartAfter))
-            {
-                strRun = str.Substring(str.IndexOf(delimiterStartAfter) + delimiterStartAfter.Length);
-                if (-1 < strRun.IndexOf(delimiterEndBefore))
-                {
-                    strRun = strRun.Substring(0, strRun.IndexOf(delimiterEndBefore));
-                }
-                else
-                {
-                    strRun = string.Empty;  // No luck, Ending not after Start; go back to nothing.
-                }
-            }
-
-            return strRun;
-        }
-
-        public static bool ContainsWhitespace(this string str)
-        {
-            Regex regexp = new Regex(@"\s");
-            return regexp.IsMatch(str);
-        }
-
-        public static string OperateOnNonQuotedChunks(this string str,
-            Func<string, string> chunkProcessor,
-            params char[] astrSplittingTokens)
-        {
-            string strReturn = string.Empty;
-            string strUnquotedChunk = string.Empty;
-
-            for (int i = 0; i < str.Length; i++)
-            {
-                while (i < str.Length && !astrSplittingTokens.Contains(str[i]))
-                {
-                    strUnquotedChunk += str[i]; // I guess we could use indexOf, but that'd make the `params` more difficult to handle
-                    i++;
-                }
-                strReturn += chunkProcessor(strUnquotedChunk);      // TODO: StringBuilder
-                strUnquotedChunk = string.Empty;
-
-                // So we're either at the end of the string or we're in a quote.
-                if (i < str.Length)
-                {
-                    char splitterFound = str[i];
-                    i++;
-                    while (i < str.Length)
-                    {
-                        if (str[i].Equals(splitterFound))
-                            // If we have two of the same splitter char in a row, we're going to
-                            // treat it as an escape sequence.
-                            // TODO: Could make that optional.
-                            if (i + 1 < str.Length)
-                                if (str[i + 1].Equals(splitterFound))
-                                    i = i + 2;
-                                else
-                                    break;
-                            else
-                                break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
-                        else
-                            i++;
-                    }
-                }
-            }
-
-            return strReturn;
-        }
-
-        /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string.
-        /// This overload will use default quote character of ' and a
-        /// StringComparison type of CurrentCultureIgnorecase.
-        /// </summary>
-        /// <param name="str">The string being searched; `this`</param>
-        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
-        /// <returns>True if string is found, false is not.</returns>
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind)
-        {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, '\'');
-        }
-
-        /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string.
-        /// This overload will accepts any number of splitting tokens as trailing params, and uses
-        /// StringComparison type of CurrentCultureIgnorecase.
-        /// </summary>
-        /// <param name="str">The string being searched; `this`</param>
-        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
-        /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
-        /// escaped string.</param>
-        /// <returns>True if it's there, false if it isn't.</returns>
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind, params char[] astrSplittingTokens)
-        {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
-        }
-
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind, StringComparison stringComparison)
-        {
-            return str.ContainsOutsideOfQuotes(strToFind, stringComparison, new[] {'\''});
-        }
-
-        /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string.
-        /// If the double-quote is passed in as a "splitting token", and you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
-        /// "test" is within ' and '.
-        ///
-        /// Note: I'm not handling stringComparison yet.
-        /// </summary>
-        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
-        /// <param name="stringComparison">Currently ignored.</param>
-        /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
-        /// escaped string.</param>
-        /// <returns>True if it's there, false if it isn't.</returns>
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind,
-            StringComparison stringComparison,
-            params char[] astrSplittingTokens)
-        {
-            switch (stringComparison)
-            {
-                case StringComparison.CurrentCultureIgnoreCase:
-                //case StringComparison.InvariantCultureIgnoreCase: // not valid in PCL, apparently.
-                case StringComparison.OrdinalIgnoreCase:
-                    return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, astrSplittingTokens);
-
-                default:
-                    return _containsOutsideOfQuotesCaseSENSITIVE(str, strToFind, astrSplittingTokens);
-            }
-        }
-
+        #region Private Methods
         // It's probably the sad tragedy of micro-optimization theater (http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/),
         // but I don't want to be checking a bCaseSensitive switch on every comparision, so I'm splitting the
         // engines up.
@@ -307,7 +54,7 @@ namespace org.rufwork.extensions
                                     break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
                             else
                                 i++;
-                         }
+                        }
                     }
                     else
                     {
@@ -375,11 +122,6 @@ namespace org.rufwork.extensions
             return foundIt;
         }
 
-        public static string[] Split(this string str, string splitter)
-        {
-            return str.Split(new string[] { splitter }, StringSplitOptions.RemoveEmptyEntries);
-        }
-
         private static string _AsteriskizeString(string str, int intLength, bool useStarOnOversize, bool displayEnd)
         {
             str = displayEnd ? str.Substring(str.Length - intLength) : str.Substring(0, intLength);
@@ -388,6 +130,200 @@ namespace org.rufwork.extensions
                 : str.ReplaceSingleChar(str.Length - 1, '*');
 
             return str;
+        }
+
+        private static bool _NotEmptyString(String s)
+        {
+            // TODO: Why not `!string.IsNullOrEmpty(s)`?  Guess we can't get a null from
+            // the split in StringToNonWhitespaceTokens and this is faster?
+            return !s.Equals("");
+        }
+
+        private static string _dbCleanAndQuote(string strIn, bool addQuotes = true)
+        {
+            strIn = Regex.Replace(strIn, @"\r\n?|\n", "\n");
+            strIn = strIn.Replace("'", "''");
+            strIn = strIn.Replace("" + (char)8217, "''");
+            strIn = strIn.Replace(";", @"\;");
+            strIn = addQuotes ? "'" + strIn + "'" : strIn;
+
+            return strIn;
+        }
+        #endregion Private Methods
+
+        #region Parse subset of string
+        /// <summary>
+        /// Replacement for string's Substring that won't bork if the start location is past
+        /// the original's length (returns string.Empty in that case) or if the length for the
+        /// substring is longer than what's left after starting at intStart (returns as much string as
+        /// there is after intStart).
+        /// </summary>
+        /// <param name="self">The string being substringed</param>
+        /// <param name="intStart">0-indexed character from which to start the substring.</param>
+        /// <param name="intLength">Length of substring to attempt to take.</param>
+        /// <returns>Returns the normal substring, string.Empty if start is past the end of the string, or
+        /// as much of the string as there is if the length of the substring would pass the end of `self`.</returns>
+        public static string SafeSubstring(this string self, int intStart, int intLength)
+        {
+            if (intStart > self.Length)
+                return string.Empty;
+            else
+                return self.Substring(intStart, Math.Min(intStart + intLength, self.Length - intStart));
+        }
+
+        // Using `ToByte` just to illustrate cleanly that we're ANDing on
+        // the leading bit.
+        // Note that C# 6.0 might allow "real" binary representations:
+        // http://roslyn.codeplex.com/wikipage?title=Language%20Feature%20Status
+        public static string CutToUTF8Length(this string str, int byteLength)
+        {
+            byte[] byteArray = Encoding.UTF8.GetBytes(str);
+            string returnValue = string.Empty;
+
+            if (byteArray.Length > byteLength)
+            {
+                int bytePointer = byteLength;
+
+                // Check high bit to see if we're [potentially] in the middle of a multi-byte char
+                if (bytePointer >= 0 && (byteArray[bytePointer] & Convert.ToByte("10000000", 2)) > 0)
+                {
+                    while (bytePointer >= 0 && Convert.ToByte("11000000", 2) != (byteArray[bytePointer] & Convert.ToByte("11000000", 2)))
+                    {
+                        bytePointer--;
+                    }
+                }
+
+                // See if we had 1s in the high bit all the way back. If so, we're toast. Return empty string.
+                if (0 != bytePointer)
+                {
+                    byte[] cutValue = new byte[bytePointer];
+                    Array.Copy(byteArray, cutValue, bytePointer);
+                    returnValue = Encoding.UTF8.GetString(cutValue, 0, cutValue.Length);
+                }
+            }
+            else
+            {
+                returnValue = str;
+            }
+
+            return returnValue;
+        }
+
+        // Note that this is length by bytes.
+        public static string SafeUTFSubstring(this string self, int intStartCharacter, int intLengthInBytes)
+        {
+            if (intStartCharacter > self.Length)
+                return string.Empty;
+            else
+                return self.Substring(intStartCharacter).CutToUTF8Length(Math.Min(intStartCharacter + intLengthInBytes, self.LengthUTF8()));
+        }
+        #endregion Parse subset of string
+
+        #region String manipulation (string-to-reformatted-string)
+        public static string DraconianWrap(this string str, int lineLength, string lineEnding = "\n")
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            int stringPos = 0;
+            while (stringPos < str.Length)
+            {
+                int substringLength = stringPos + lineLength > str.Length ? str.Length - stringPos : lineLength;
+                string substring = str.Substring(stringPos, substringLength);
+                stringBuilder.Append(substring + lineEnding);
+                stringPos += substringLength;
+            }
+            return stringBuilder.ToString();
+        }
+
+        // Note that this doesn't work with Hebrew characters with vowels,
+        // apparently (though you could argue it kind of does, iiuc)
+        // See stackoverflow.com/questions/15029238
+        public static string ReverseString(this string str)
+        {
+            if (null == str)
+                return null;
+
+            char[] aReverseMe = str.ToCharArray();
+            Array.Reverse(aReverseMe);
+            return new string(aReverseMe);
+        }
+
+        public static string OperateOnNonQuotedChunks(this string str,
+            Func<string, string> chunkProcessor,
+            params char[] astrSplittingTokens)
+        {
+            string strReturn = string.Empty;
+            string strUnquotedChunk = string.Empty;
+
+            for (int i = 0; i < str.Length; i++)
+            {
+                while (i < str.Length && !astrSplittingTokens.Contains(str[i]))
+                {
+                    strUnquotedChunk += str[i]; // I guess we could use indexOf, but that'd make the `params` more difficult to handle
+                    i++;
+                }
+                strReturn += chunkProcessor(strUnquotedChunk);      // TODO: StringBuilder
+                strUnquotedChunk = string.Empty;
+
+                // So we're either at the end of the string or we're in a quote.
+                if (i < str.Length)
+                {
+                    char splitterFound = str[i];
+                    i++;
+                    while (i < str.Length)
+                    {
+                        if (str[i].Equals(splitterFound))
+                            // If we have two of the same splitter char in a row, we're going to
+                            // treat it as an escape sequence.
+                            // TODO: Could make that optional.
+                            if (i + 1 < str.Length)
+                                if (str[i + 1].Equals(splitterFound))
+                                    i = i + 2;
+                                else
+                                    break;
+                            else
+                                break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
+                        else
+                            i++;
+                    }
+                }
+            }
+
+            return strReturn;
+        }
+
+        public static string ReplaceSingleChar(this string str, int intCharIndex, char chr)
+        {
+            char[] achr = str.ToCharArray();
+            achr[intCharIndex] = chr;
+            return new string(achr);
+        }
+
+        public static string ReplaceCaseInsensitiveFind(this string str, string findMe, string newValue)
+        {
+            return Regex.Replace(str,
+                Regex.Escape(findMe),
+                Regex.Replace(newValue, "\\$[0-9]+", @"$$$0"),
+                RegexOptions.IgnoreCase);
+        }
+
+        public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore)
+        {
+            string strRun = string.Empty;
+
+            if (-1 < str.IndexOf(delimiterStartAfter))
+            {
+                strRun = str.Substring(str.IndexOf(delimiterStartAfter) + delimiterStartAfter.Length);
+                if (-1 < strRun.IndexOf(delimiterEndBefore))
+                {
+                    strRun = strRun.Substring(0, strRun.IndexOf(delimiterEndBefore));
+                }
+                else
+                {
+                    strRun = string.Empty;  // No luck, Ending not after Start; go back to nothing.
+                }
+            }
+
+            return strRun;
         }
 
         /// <summary>
@@ -434,6 +370,199 @@ namespace org.rufwork.extensions
                 str = str.PadRight(intLength);
 
             return str;
+        }
+
+        public static string FlattenWhitespace(this string strIn)
+        {
+            return System.Text.RegularExpressions.Regex.Replace(strIn, @"[\s\n]+", " ");
+        }
+
+        public static string ScrubValue(this string strToScrub)
+        {
+            string strReturn = strToScrub;
+
+            strReturn = strReturn.Replace("'", "''");
+
+            return strReturn;
+        }
+
+        public static string ToQuotedPrintable(this string self)
+        {
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(self);
+            StringBuilder sbInner = new StringBuilder();
+            StringBuilder sbOuter = new StringBuilder();
+
+            foreach (byte byt in bytes)
+            {
+                int charLenQP = (byt >= 33 && byt <= 126 && byt != 61) ? 1 : 3;
+                if (sbInner.Length + charLenQP > 75)
+                {
+                    sbOuter.Append(sbInner + "=\r\n");
+                    sbInner = new StringBuilder();
+                }
+
+                if (1 == charLenQP)
+                {
+                    sbInner.Append((char)byt);
+                }
+                else
+                {
+                    sbInner.Append("=" + byt.ToString("X2"));
+                }
+            }
+            sbOuter.Append(sbInner);
+            return sbOuter.ToString();
+        }
+
+        // Only replace double single quotes inside of single quotes.
+        public static string BacktickQuotes(this string strToClean)
+        {
+            bool inQuotes = false;
+            string strOut = string.Empty;
+            for (int i = 0; i < strToClean.Length - 1; i++)
+            {
+                if (strToClean[i].Equals('\'') && strToClean[i + 1].Equals('\''))
+                {
+                    strOut += inQuotes ? "`" : "''";
+                    i++;
+                }
+                else if (strToClean[i].Equals('\''))
+                {
+                    strOut += '\'';
+                    inQuotes = !inQuotes;
+                }
+                else
+                    strOut += strToClean[i];
+            }
+            strOut += strToClean[strToClean.Length - 1];
+            //Logger.WriteLine(strOut);
+            return strOut;
+        }
+
+        public static string DeleteLastNChars(this string str, int charsToDelete)
+        {
+            return str.Remove(str.Length - charsToDelete);
+        }
+
+        public static string Slice(this string str, int intSlice)
+        {
+            string ret = str;
+
+            if (0 == intSlice)
+            {
+                ret = str;
+            }
+            else if (intSlice > 0)
+            {
+                ret = str.Substring(0, intSlice);
+            }
+            else
+            {
+                // Remember that intSlice is negative here
+                ret = str.Remove(str.Length + intSlice);
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// Cleans a string to insert into SQL so that it shouldn't allow
+        /// SQL injection when run (but might). Not guaranteeing it's
+        /// particularly robust at this point, I don't think.
+        /// Adds single quotes to both ends of the string (start and end).
+        /// </summary>
+        /// <param name="strIn">The string being cleaned. Should NOT be the entire SQL string, but just what might be pushed into a quoted value.</param>
+        /// <returns>The cleaned, now single-quoted SQL string value.</returns>
+        public static string DbCleanAndQuote(this string strIn)
+        {
+            return _dbCleanAndQuote(strIn, true);
+        }
+
+        public static string DbCleanNoQuote(this string strIn)
+        {
+            return _dbCleanAndQuote(strIn, false);
+        }
+        #endregion String manipulation (string-to-reformatted-string)
+
+        #region string checks (return boolean based on some condition/set of conditions)
+        public static bool ContainsWhitespace(this string str)
+        {
+            Regex regexp = new Regex(@"\s");
+            return regexp.IsMatch(str);
+        }
+
+        /// <summary>
+        /// Looks for a string that isn't within a quoted section of the parent string.
+        /// This overload will use default quote character of ' and a
+        /// StringComparison type of CurrentCultureIgnorecase.
+        /// </summary>
+        /// <param name="str">The string being searched; `this`</param>
+        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
+        /// <returns>True if string is found, false is not.</returns>
+        public static bool ContainsOutsideOfQuotes(this string str, string strToFind)
+        {
+            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, '\'');
+        }
+
+        /// <summary>
+        /// Looks for a string that isn't within a quoted section of the parent string.
+        /// This overload will accepts any number of splitting tokens as trailing params, and uses
+        /// StringComparison type of CurrentCultureIgnorecase.
+        /// </summary>
+        /// <param name="str">The string being searched; `this`</param>
+        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
+        /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
+        /// escaped string.</param>
+        /// <returns>True if it's there, false if it isn't.</returns>
+        public static bool ContainsOutsideOfQuotes(this string str, string strToFind, params char[] astrSplittingTokens)
+        {
+            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
+        }
+
+        public static bool ContainsOutsideOfQuotes(this string str, string strToFind, StringComparison stringComparison)
+        {
+            return str.ContainsOutsideOfQuotes(strToFind, stringComparison, new[] { '\'' });
+        }
+
+        /// <summary>
+        /// Looks for a string that isn't within a quoted section of the parent string.
+        /// If the double-quote is passed in as a "splitting token", and you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
+        /// "test" is within ' and '.
+        ///
+        /// Note: I'm not handling stringComparison yet.
+        /// </summary>
+        /// <param name="strToFind">String that we want to find outside of quotes in the "calling" or parent string.</param>
+        /// <param name="stringComparison">Currently ignored.</param>
+        /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
+        /// escaped string.</param>
+        /// <returns>True if it's there, false if it isn't.</returns>
+        public static bool ContainsOutsideOfQuotes(this string str, string strToFind,
+            StringComparison stringComparison,
+            params char[] astrSplittingTokens)
+        {
+            switch (stringComparison)
+            {
+                case StringComparison.CurrentCultureIgnoreCase:
+                //case StringComparison.InvariantCultureIgnoreCase: // not valid in PCL, apparently.
+                case StringComparison.OrdinalIgnoreCase:
+                    return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, astrSplittingTokens);
+
+                default:
+                    return _containsOutsideOfQuotesCaseSENSITIVE(str, strToFind, astrSplittingTokens);
+            }
+        }
+
+        public static bool IsNumeric(this string str)
+        {
+            double dblDummy;
+            return double.TryParse(str, out dblDummy);
+            //return str.All(c => char.IsDigit(c) || c == '.'); // <<< Advantage is no issue with overflows, which might be a problem with double.TryParse.  I'll ignore that for now (I could wrap for an overflow exception and then fallback to this).
+        }
+        #endregion string checks (return boolean based on some condition/set of conditions)
+
+        #region Splits/strings into some IEnumerable
+        public static string[] Split(this string str, string splitter)
+        {
+            return str.Split(new string[] { splitter }, StringSplitOptions.RemoveEmptyEntries);
         }
 
         public static Queue<String> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
@@ -502,42 +631,50 @@ namespace org.rufwork.extensions
             return qReturn;
         }
 
-        public static bool IsNumeric(this string str)
+        public static string[] StringToNonWhitespaceTokens(this string strToToke)
         {
-            double dblDummy;
-            return double.TryParse(str, out dblDummy);
-            //return str.All(c => char.IsDigit(c) || c == '.'); // <<< Advantage is no issue with overflows, which might be a problem with double.TryParse.  I'll ignore that for now (I could wrap for an overflow exception and then fallback to this).
+            string[] astrAllTokens = strToToke.Split();
+            string[] astrCmdTokens =
+                Array.FindAll(astrAllTokens, _NotEmptyString);
+            return astrCmdTokens;
         }
 
-        // Only replace double single quotes inside of single quotes.
-        public static string BacktickQuotes(this string strToClean)
+        /// <summary>
+        /// Splits the string into an array of non-whitespace tokens
+        /// split by any whitespace. Strips commas and does not return
+        /// tokens that trim to empty strings.
+        /// </summary>
+        /// <param name="strToToke">The string this extension is called upon</param>
+        /// <returns>String array of non-whitespace tokens.</returns>
+        public static string[] StringToNonWhitespaceTokens2(this string strToToke)
         {
-            bool inQuotes = false;
-            string strOut = string.Empty;
-            for (int i = 0; i < strToClean.Length - 1; i++)
+            return Regex.Split(strToToke, @"[\(\)\s,]+").Where(s => s != String.Empty).ToArray<string>(); // TODO: Better way of doing this.  Can I add to regex intelligently?
+        }
+
+        // TODO: Consider having a "max lines to return" governor to make sure we don't get memory crazy.
+        public static string[] LinesAsArray(this string str, int intWrapLength = -1)
+        {
+            string[] astrRun = str.Split(new string[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+
+            if (intWrapLength > 1)
             {
-                if (strToClean[i].Equals('\'') && strToClean[i + 1].Equals('\''))
+                Queue<string> qRun = new Queue<string>();
+                foreach (string strLine in astrRun)
                 {
-                    strOut += inQuotes ? "`" : "''";
-                    i++;
+                    foreach (string strWrappedLine in strLine.DraconianWrap(intWrapLength).LinesAsArray())
+                    {
+                        qRun.Enqueue(strWrappedLine);
+                    }
                 }
-                else if (strToClean[i].Equals('\''))
-                {
-                    strOut += '\'';
-                    inQuotes = !inQuotes;
-                }
-                else
-                    strOut += strToClean[i];
+                astrRun = qRun.ToArray();
             }
-            strOut += strToClean[strToClean.Length - 1];
-            //Logger.WriteLine(strOut);
-            return strOut;
+            return astrRun;
         }
 
         // Yes, I gave up on RegExp and used a char array.  Sue me.
         // Honestly, this is much more straightforward.  It's like a regexp
         // as an exploded view.
-        // Honestly not sure why this isn't in a "SqlSpecificStringExtensions" class.
+        // Honestly not sure why this isn't in a "SqlSpecificStringExtensions" class. <<< This. +1.
         // It will be soonish.
         public static string[] SqlToTokens(this string strToToke)
         {
@@ -624,134 +761,8 @@ namespace org.rufwork.extensions
             return qString.ToArray();
         }
 
-        public static int CountCharInString(this string strToSearch, string strToFind)
-        {
-            return strToSearch.Length - (strToSearch.Replace(strToFind, "").Length / strToFind.Length);
-        }
-
-        public static string RemoveNewlines(this string strIn, string strReplacement)
-        {
-            return Regex.Replace(strIn, @"\r\n?|\n", strReplacement);
-        }
-
-        public static string FlattenWhitespace(this string strIn)
-        {
-            return System.Text.RegularExpressions.Regex.Replace(strIn, @"[\s\n]+", " ");
-        }
-
-        public static string ScrubValue(this string strToScrub)
-        {
-            string strReturn = strToScrub;
-
-            strReturn = strReturn.Replace("'", "''");
-
-            return strReturn;
-        }
-
-        private static bool _NotEmptyString(String s)
-        {
-            // TODO: Why not `!string.IsNullOrEmpty(s)`?  Guess we can't get a null from
-            // the split in StringToNonWhitespaceTokens and this is faster?
-            return !s.Equals("");
-        }
-
-        public static string[] StringToNonWhitespaceTokens(this string strToToke)
-        {
-            string[] astrAllTokens = strToToke.Split();
-            string[] astrCmdTokens =
-                Array.FindAll(astrAllTokens, _NotEmptyString);
-            return astrCmdTokens;
-        }
-
-        /// <summary>
-        /// Splits the string into an array of non-whitespace tokens
-        /// split by any whitespace. Strips commas and does not return
-        /// tokens that trim to empty strings.
-        /// </summary>
-        /// <param name="strToToke">The string this extension is called upon</param>
-        /// <returns>String array of non-whitespace tokens.</returns>
-        public static string[] StringToNonWhitespaceTokens2(this string strToToke)
-        {
-            return Regex.Split(strToToke, @"[\(\)\s,]+").Where(s => s != String.Empty).ToArray<string>(); // TODO: Better way of doing this.  Can I add to regex intelligently?
-        }
-
-        // TODO: Consider having a "max lines to return" governor to make sure we don't get memory crazy.
-        public static string[] LinesAsArray(this string str, int intWrapLength = -1)
-        {
-            string[] astrRun = str.Split(new string[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-
-            if (intWrapLength > 1)
-            {
-                Queue<string> qRun = new Queue<string>();
-                foreach (string strLine in astrRun)
-                {
-                    foreach (string strWrappedLine in strLine.DraconianWrap(intWrapLength).LinesAsArray())
-                    {
-                        qRun.Enqueue(strWrappedLine);
-                    }
-                }
-                astrRun = qRun.ToArray();
-            }
-            return astrRun;
-        }
-
-        public static string ToQuotedPrintable(this string self)
-        {
-            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(self);
-            StringBuilder sbInner = new StringBuilder();
-            StringBuilder sbOuter = new StringBuilder();
-
-            foreach (byte byt in bytes)
-            {
-                int charLenQP = (byt >= 33 && byt <= 126 && byt != 61) ? 1 : 3;
-                if (sbInner.Length + charLenQP > 75)
-                {
-                    sbOuter.Append(sbInner + "=\r\n");
-                    sbInner = new StringBuilder();
-                }
-
-                if (1 == charLenQP)
-                {
-                    sbInner.Append((char)byt);
-                }
-                else
-                {
-                    sbInner.Append("=" + byt.ToString("X2"));
-                }
-            }
-            sbOuter.Append(sbInner);
-            return sbOuter.ToString();
-        }
-
-        /// <summary>
-        /// Cleans a string to insert into SQL so that it shouldn't allow
-        /// SQL injection when run (but might). Not guaranteeing it's
-        /// particularly robust at this point, I don't think.
-        /// Adds single quotes to both ends of the string (start and end).
-        /// </summary>
-        /// <param name="strIn">The string being cleaned. Should NOT be the entire SQL string, but just what might be pushed into a quoted value.</param>
-        /// <returns>The cleaned, now single-quoted SQL string value.</returns>
-        public static string DbCleanAndQuote(this string strIn)
-        {
-            return _dbCleanAndQuote(strIn, true);
-        }
-
-        public static string DbCleanNoQuote(this string strIn)
-        {
-            return _dbCleanAndQuote(strIn, false);
-        }
-
-        private static string _dbCleanAndQuote(string strIn, bool addQuotes = true)
-        {
-            strIn = Regex.Replace(strIn, @"\r\n?|\n", "\n");
-            strIn = strIn.Replace("'", "''");
-            strIn = strIn.Replace("" + (char)8217, "''");
-            strIn = strIn.Replace(";", @"\;");
-            strIn = addQuotes ? "'" + strIn + "'" : strIn;
-
-            return strIn;
-        }
-
+        // Not strictly an IEnumerable (okay okay, not one at all), but returns two strings
+        // based on content, so fitting into Splits/string parses region.
         // For some reason, the PCL wasn't supporting TakeWhile, so I skipped on this LINQ heavy solution:
         // string toPrepend = string.Concat(value.TakeWhile(c => c.Equals(' '))); // ...
         public static Tuple<string, string> PullLeadingAndTrailingSpaces(this string value)
@@ -776,7 +787,16 @@ namespace org.rufwork.extensions
 
             return new Tuple<string, string>(new string(' ', prependCount), new string(' ', appendCount));
         }
+        #endregion Splits/strings into some IEnumerable
 
+        #region Newline related
+        /// <summary>
+        /// Remove a trailing newline from a string.
+        /// </summary>
+        /// <param name="str">The string being evaluated</param>
+        /// <param name="removeCRorNLifNoPlatformNL">If true, a single \n or \r, whichever is trailing,
+        /// will be removed if the string does not end in an Environment.NewLine</param>
+        /// <returns></returns>
         public static string RemoveLastNewLine(this string str, bool removeCRorNLifNoPlatformNL = false)
         {
             // TODO: I'm having trouble with NewLines and UWP TextBox.SelectedText, which
@@ -795,11 +815,6 @@ namespace org.rufwork.extensions
             }
 
             return str;
-        }
-
-        public static string DeleteLastNChars(this string str, int charsToDelete)
-        {
-            return str.Remove(str.Length - charsToDelete);
         }
 
         public static string RemoveLeadingNewLine(this string str)
@@ -831,6 +846,36 @@ namespace org.rufwork.extensions
 
             return ret;
         }
+
+        public static string RemoveNewlines(this string strIn, string strReplacement)
+        {
+            return Regex.Replace(strIn, @"\r\n?|\n", strReplacement);
+        }
+        #endregion Newline related
+
+        #region Counts
+        public static int LengthUTF8(this string str)
+        {
+            return Encoding.UTF8.GetByteCount(str);
+        }
+
+        public static int CountCharInString(this string strToSearch, string strToFind)
+        {
+            return strToSearch.Length - (strToSearch.Replace(strToFind, "").Length / strToFind.Length);
+        }
+        #endregion Counts
+
+        #region Utility methods (I/O)
+        public static Stream ToStream(this string str)
+        {
+            MemoryStream stream = new MemoryStream();
+            StreamWriter writer = new StreamWriter(stream);
+            writer.Write(str);
+            writer.Flush();
+            stream.Position = 0;
+            return stream;
+        }
+        #endregion Utility methods (I/O)
 
         #region CodeProject
         // Source: http://www.codeproject.com/Articles/11902/Convert-HTML-to-Plain-Text
