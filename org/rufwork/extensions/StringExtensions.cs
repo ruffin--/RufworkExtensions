@@ -439,7 +439,7 @@ namespace org.rufwork.extensions
             return strOut;
         }
 
-        public static string DeleteLastNChars(this string str, int charsToDelete)
+        public static string RemoveLastNChars(this string str, int charsToDelete)
         {
             return str.Remove(str.Length - charsToDelete);
         }
@@ -851,6 +851,28 @@ namespace org.rufwork.extensions
         {
             return Regex.Replace(strIn, @"\r\n?|\n", strReplacement);
         }
+
+        public static string SplitAtNextNewline(this string str)
+        {
+            int OD = str.IndexOf('\r');
+            int OA = str.IndexOf('\n');
+
+            OD = OD > 0 ? OD : str.Length;  // You could cache this for next line or not poll str for length, but that's micro-opt, I think.
+            OA = OA > 0 ? OA : str.Length;
+
+            return str.Substring(0, Math.Min(OD, OA));
+        }
+
+        public static string SplitAtLastNewline(this string str)
+        {
+            int OD = str.LastIndexOf('\r');
+            int OA = str.LastIndexOf('\n');
+
+            OD = OD > 0 ? OD : 0;
+            OA = OA > 0 ? OA : 0;
+
+            return str.Substring(Math.Max(OD, OA));
+        }
         #endregion Newline related
 
         #region Counts
@@ -859,7 +881,14 @@ namespace org.rufwork.extensions
             return Encoding.UTF8.GetByteCount(str);
         }
 
-        public static int CountCharInString(this string strToSearch, string strToFind)
+        /// <summary>
+        /// Checks the string to see how many times another string occurs.
+        /// Case sensitive.
+        /// </summary>
+        /// <param name="strToSearch">The string on which this extension method is being called.</param>
+        /// <param name="strToFind">The case sensitive substring whose occurrences are being counted.</param>
+        /// <returns>With any luck, the number of times strToFind was found in strToSearch.</returns>
+        public static int CountSubstringPatternOccurrences(this string strToSearch, string strToFind)
         {
             return strToSearch.Length - (strToSearch.Replace(strToFind, "").Length / strToFind.Length);
         }
