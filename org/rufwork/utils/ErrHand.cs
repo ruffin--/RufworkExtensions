@@ -5,18 +5,13 @@
 // ======================== EO LICENSE ===============================
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using org.rufwork.shims.io;
 
 namespace org.rufwork.utils
 {
     // Kinda nervous putting this in an "Extensions" project, but I think it works, since
     // we might want to handle errors there too. I do want a standardized location for all
     // error handling, and this is the only project that really works like that.
+    // TODO: Create an interface and inject something to write logs.
     public static class ErrHand
     {
         public static string StrLogFileHome = "";
@@ -46,12 +41,14 @@ namespace org.rufwork.utils
 
         public static void LogMsg(string strMsg, string strLocation = "")
         {
-            System.Diagnostics.Debug.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")  + ": " + strMsg);
+            string message = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")  + ": " + strMsg;
 
             if (!string.IsNullOrWhiteSpace(strLocation))
             {
-                ErrHand.LogMsg("\t" + strLocation);
+                message += "\t" + strLocation;
             }
+
+            Logger.LogIt(message, ErrHand.StrLogFileHome);
         }
     }
 }
