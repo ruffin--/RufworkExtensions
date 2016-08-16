@@ -790,6 +790,8 @@ namespace org.rufwork.extensions
         #endregion Splits/strings into some IEnumerable
 
         #region Newline related
+        private static char[] _acCrLF = { '\n', '\r' };
+
         /// <summary>
         /// Remove a trailing newline from a string.
         /// </summary>
@@ -840,8 +842,7 @@ namespace org.rufwork.extensions
 
             if (!string.IsNullOrEmpty(str))
             {
-                char[] acCrLF = { '\n', '\r' };
-                ret = acCrLF.Contains(str[str.Length - 1]);
+                ret = _acCrLF.Contains(str[str.Length - 1]);
             }
 
             return ret;
@@ -852,27 +853,29 @@ namespace org.rufwork.extensions
             return Regex.Replace(strIn, @"\r\n?|\n", strReplacement);
         }
 
-        public static string SplitAtNextNewline(this string str)
+        public static string SplitAtFirstNewline(this string str)
         {
-            int OD = str.IndexOf('\r');
-            int OA = str.IndexOf('\n');
-
-            OD = OD > 0 ? OD : str.Length;  // You could cache this for next line or not poll str for length, but that's micro-opt, I think.
-            OA = OA > 0 ? OA : str.Length;
-
-            return str.Substring(0, Math.Min(OD, OA));
+            int index = str.IndexOfNewlineChar();
+            return index > -1 ? str.Substring(0, index) : str;
         }
 
         public static string SplitAtLastNewline(this string str)
         {
-            int OD = str.LastIndexOf('\r');
-            int OA = str.LastIndexOf('\n');
-
-            OD = OD > 0 ? OD : 0;
-            OA = OA > 0 ? OA : 0;
-
-            return str.Substring(Math.Max(OD, OA));
+            int index = str.LastIndexOfNewlineChar();
+            return index > -1 ? str.Substring(index + 1) : str;
         }
+
+        public static int IndexOfNewlineChar(this string str)
+        {
+            return str.IndexOfAny(_acCrLF);
+        }
+
+        public static int LastIndexOfNewlineChar(this string str)
+        {
+            return str.LastIndexOfAny(_acCrLF);
+        }
+
+        //public static int Last
         #endregion Newline related
 
         #region Counts
