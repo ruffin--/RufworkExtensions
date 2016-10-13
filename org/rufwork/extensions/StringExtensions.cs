@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 //using System.Security.Cryptography;
 
 using org.rufwork.utils;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace org.rufwork.extensions
 {
@@ -304,6 +305,12 @@ namespace org.rufwork.extensions
                 Regex.Escape(findMe),
                 Regex.Replace(newValue, "\\$[0-9]+", @"$$$0"),
                 RegexOptions.IgnoreCase);
+        }
+
+
+        public static string ExtractHtmlFromClipboardString(this string str)
+        {
+            return str.ExtractBetweenFirstInstanceofDelimiters("<!--StartFragment-->", "<!--EndFragment-->");
         }
 
         public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore)
@@ -906,6 +913,16 @@ namespace org.rufwork.extensions
             writer.Flush();
             stream.Position = 0;
             return stream;
+        }
+
+        public static void WriteToClipboard(this string str)
+        {
+            DataPackage dataPackage = new DataPackage
+            {
+                RequestedOperation = DataPackageOperation.Copy
+            };
+            dataPackage.SetText(str);
+            Clipboard.SetContent(dataPackage);
         }
         #endregion Utility methods (I/O)
 

@@ -9,6 +9,5 @@ namespace org.rufwork.shims.io
     public interface ILogToFile
     {
         void AppendAllText(string path, string text);
-        // TODO: Make sure the path exists.
     }
 }
