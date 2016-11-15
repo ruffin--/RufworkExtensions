@@ -4,17 +4,15 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 // ======================== EO LICENSE ===============================
 
+//using System.Security.Cryptography;
+
+using org.rufwork.utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-//using System.Security.Cryptography;
-
-using org.rufwork.utils;
-using Windows.ApplicationModel.DataTransfer;
 
 namespace org.rufwork.extensions
 {
@@ -564,6 +562,12 @@ namespace org.rufwork.extensions
             return double.TryParse(str, out dblDummy);
             //return str.All(c => char.IsDigit(c) || c == '.'); // <<< Advantage is no issue with overflows, which might be a problem with double.TryParse.  I'll ignore that for now (I could wrap for an overflow exception and then fallback to this).
         }
+
+        public static bool CouldBeUrl(this string str)
+        {
+            //return str.StartsWith("http") && str.Contains("://");
+            return Uri.IsWellFormedUriString(str, UriKind.Absolute);
+        }
         #endregion string checks (return boolean based on some condition/set of conditions)
 
         #region Splits/strings into some IEnumerable
@@ -915,15 +919,16 @@ namespace org.rufwork.extensions
             return stream;
         }
 
-        public static void WriteToClipboard(this string str)
-        {
-            DataPackage dataPackage = new DataPackage
-            {
-                RequestedOperation = DataPackageOperation.Copy
-            };
-            dataPackage.SetText(str);
-            Clipboard.SetContent(dataPackage);
-        }
+        // Forget doing this in a PCL, you dolt.
+        //public static void WriteToClipboard(this string str)
+        //{
+        //    DataPackage dataPackage = new DataPackage
+        //    {
+        //        RequestedOperation = DataPackageOperation.Copy
+        //    };
+        //    dataPackage.SetText(str);
+        //    Clipboard.SetContent(dataPackage);
+        //}
         #endregion Utility methods (I/O)
 
         #region CodeProject
