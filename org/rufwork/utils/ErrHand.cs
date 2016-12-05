@@ -36,7 +36,7 @@ namespace org.rufwork.utils
 
         public static void LogErr(Exception e, string strLocation, string strAddlInfo = "")
         {
-            ErrHand.LogErr(e.ToString(), strLocation, strAddlInfo);
+            ErrHand.LogErr(e.Message + "\n\t" + e.StackTrace, strLocation, strAddlInfo);
         }
 
         public static void LogMsg(string strMsg, string strLocation = "")
