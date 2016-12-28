@@ -311,21 +311,19 @@ namespace org.rufwork.extensions
             return str.ExtractBetweenFirstInstanceofDelimiters("<!--StartFragment-->", "<!--EndFragment-->");
         }
 
-        public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore)
+        public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore, bool iLiedUseLast = false)
         {
             string strRun = string.Empty;
+            int indexStart = iLiedUseLast ? str.LastIndexOf(delimiterStartAfter) : str.IndexOf(delimiterStartAfter);
+            int indexEnd = iLiedUseLast ? str.LastIndexOf(delimiterEndBefore) : str.IndexOf(delimiterEndBefore);
 
-            if (-1 < str.IndexOf(delimiterStartAfter))
+            if (indexStart < indexEnd && indexStart > -1)
             {
-                strRun = str.Substring(str.IndexOf(delimiterStartAfter) + delimiterStartAfter.Length);
-                if (-1 < strRun.IndexOf(delimiterEndBefore))
-                {
-                    strRun = strRun.Substring(0, strRun.IndexOf(delimiterEndBefore));
-                }
-                else
-                {
-                    strRun = string.Empty;  // No luck, Ending not after Start; go back to nothing.
-                }
+                strRun = str.Substring(indexStart + delimiterStartAfter.Length, indexEnd - (indexStart + delimiterStartAfter.Length));
+            }
+            else
+            {
+                strRun = string.Empty;  // No luck, Ending not after Start or not found; go back to nothing.
             }
 
             return strRun;
