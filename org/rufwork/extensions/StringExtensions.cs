@@ -219,6 +219,17 @@ namespace org.rufwork.extensions
         #endregion Parse subset of string
 
         #region String manipulation (string-to-reformatted-string)
+
+        public static string Splice(this string str, string toInsert, int spliceLoc)
+        {
+            string ret = str;
+            if (!string.IsNullOrEmpty(str) && str.Length >= spliceLoc && spliceLoc > -1)
+            {
+                ret = str.Substring(0, spliceLoc) + toInsert + str.Substring(spliceLoc);
+            }
+            return ret;
+        }
+
         public static string DraconianWrap(this string str, int lineLength, string lineEnding = "\n")
         {
             StringBuilder stringBuilder = new StringBuilder();
@@ -566,6 +577,64 @@ namespace org.rufwork.extensions
             //return str.StartsWith("http") && str.Contains("://");
             return Uri.IsWellFormedUriString(str, UriKind.Absolute);
         }
+
+        /// <summary>
+        /// This method checks if a specific leading string starts immediately before a zero-width
+        /// cursor placed at the zero-based index given in `zeroBasedPos` in the string being tested.
+        /// "01234".Leads(2, "01") == true
+        /// Note that empty test strings will always return true.
+        /// </summary>
+        /// <param name="str">The larger "parent" string to test</param>
+        /// <param name="zeroBasedPos">The location of the zero-width "cursor" demarking the test start.</param>
+        /// <param name="lead">The string to match in the parent string</param>
+        /// <returns>True if the string leads the given cursor location. False otherwise. "" as a leading
+        /// string will always return true.</returns>
+        public static bool Leads(this string str, int zeroBasedPos, string lead)
+        {
+            bool ret = false;
+
+            if (null != lead && zeroBasedPos - lead.Length >= 0)
+            {
+                ret = true;
+
+                int i = 1;
+                while (i <= lead.Length && ret)
+                {
+                    ret = ret && str[zeroBasedPos - i].Equals(lead[lead.Length - i]);
+                    i++;
+                }
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// This method checks if a specific trailing string starts immediately after a zero-width
+        /// cursor placed at the zero-based index given in `zeroBasedPos` in the string being tested.
+        /// "01234".Trails(2, "234") == true
+        /// Note that empty test strings will always return true.
+        /// </summary>
+        /// <param name="str">The larger "parent" string to test</param>
+        /// <param name="zeroBasedPos">The location of the zero-width "cursor" demarking the test start.</param>
+        /// <param name="trail">The string to match in the parent string</param>
+        /// <returns>True if the string trails the given cursor location. False otherwise. "" as a trailing
+        /// string will always return true.</returns>
+        public static bool Trails(this string str, int zeroBasedPos, string trail)
+        {
+            bool ret = false;
+
+            if (null != trail && zeroBasedPos + trail.Length <= str.Length)
+            {
+                ret = true;
+
+                int i = 0;
+                while (i < trail.Length && ret)
+                {
+                    ret = ret && str[zeroBasedPos + i].Equals(trail[i]);
+                    i++;
+                }
+            }
+            return ret;
+        }
         #endregion string checks (return boolean based on some condition/set of conditions)
 
         #region Splits/strings into some IEnumerable
@@ -574,7 +643,7 @@ namespace org.rufwork.extensions
             return str.Split(new string[] { splitter }, StringSplitOptions.RemoveEmptyEntries);
         }
 
-        public static Queue<String> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
+        public static Queue<string> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
         {
             return strToSplit.SplitSeeingQuotes(strSplittingToken, bIncludeToken, bTrimResults, '\'', '`');
         }
@@ -583,7 +652,7 @@ namespace org.rufwork.extensions
         // This should split up strings with multiple commands into, well, multiple commands.
         // Remember the respect tokens within backticks to support MySQL style backtick quotes in
         // statements like CREATE TABLE `DbVersion`...
-        public static Queue<String> SplitSeeingQuotes(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults, params char[] validQuoteChars)
+        public static Queue<string> SplitSeeingQuotes(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults, params char[] validQuoteChars)
         {
             Queue<string> qReturn = new Queue<string>();
             StringBuilder stringBuilder = new StringBuilder();
@@ -774,6 +843,8 @@ namespace org.rufwork.extensions
         // based on content, so fitting into Splits/string parses region.
         // For some reason, the PCL wasn't supporting TakeWhile, so I skipped on this LINQ heavy solution:
         // string toPrepend = string.Concat(value.TakeWhile(c => c.Equals(' '))); // ...
+        // Update: Because TakeWhile is on IEnumerable, and you need to ToCharArray on the string first. (>.<)
+        // TODO: Rewrite for simplicity?
         public static Tuple<string, string> PullLeadingAndTrailingSpaces(this string value)
         {
             // I don't normally return like this. Sorry.
@@ -828,6 +899,31 @@ namespace org.rufwork.extensions
             return str;
         }
 
+        private static Regex _regexStartDigitsPeriod = new Regex(@"^\d+\. ");
+        private static Regex _regexNoContentOL = new Regex(@"^\s*[0-9]+\. $");
+
+        public static QuackResult QuacksLikeOrderedList(this string fullLineWithoutEnding, int tabLengthInSpaces)
+        {
+
+            QuackResult result = new QuackResult();
+            var match = _regexStartDigitsPeriod.Match(fullLineWithoutEnding.TrimStart());
+
+            int spaceCount = fullLineWithoutEnding.ToCharArray().TakeWhile(c => c.Equals(' ')).Count();
+
+            result.QuacksLikeAnOL = 0 == spaceCount % tabLengthInSpaces
+                && match.Success;
+
+            if (match.Success)
+            {
+                result.HasContent = !_regexNoContentOL.IsMatch(fullLineWithoutEnding);
+                result.ListOrdinal = int.Parse(match.Value.Trim().Trim('.'));
+                result.MatchLength = match.Length;
+                result.MatchStart = match.Index + spaceCount;
+            }
+
+            return result;
+        }
+
         public static string RemoveLeadingNewLine(this string str)
         {
             if (str.StartsWith(Environment.NewLine))
@@ -841,7 +937,7 @@ namespace org.rufwork.extensions
         public static string NormalizeNewlineToCarriageReturn(this string str)
         {
             str = str.Replace("\r\n", "\r");
-            str = str.Replace("\n", "\r");
+            str = str.Replace('\n', '\r');
             return str;
         }
 
@@ -1146,5 +1242,23 @@ namespace org.rufwork.extensions
             }
         }
         #endregion CodeProject
+    }
+
+    public class QuackResult
+    {
+        public bool QuacksLikeAnOL = false;
+        public bool HasContent = false;
+        public int ListOrdinal = -1;
+        public int MatchLength = -1;
+        public int MatchStart = -1;
+
+        public override string ToString()
+        {
+            return "Quacks? " + this.QuacksLikeAnOL
+                + " :: HasContent? " + this.HasContent
+                + " :: ListOrdinal: " + this.ListOrdinal
+                + " :: MatchLength: " + this.MatchLength
+                + " :: MatchStart: " + this.MatchStart;
+        }
     }
 }
