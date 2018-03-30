@@ -34,6 +34,11 @@ namespace org.rufwork.utils
             Logger.LogIt(strErrLogMsg, ErrHand.StrLogFileHome);
         }
 
+        public static void Stop()
+        {
+            System.Diagnostics.Debugger.Break();
+        }
+
         public static void LogErr(Exception e, string strLocation, string strAddlInfo = "")
         {
             ErrHand.LogErr(e.Message + "\n\t" + e.StackTrace, strLocation, strAddlInfo);
