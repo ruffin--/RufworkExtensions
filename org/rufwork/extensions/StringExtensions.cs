@@ -24,7 +24,12 @@ namespace org.rufwork.extensions
         // engines up.
         // TODO: Insensitive probably needs some optimization. Eg, if anglais, we can do lots
         // of ASCII-ish cheats, right? Any rate, need to consider optimization.
-        private static bool _containsOutsideOfQuotesCaseINsensitive(string str, string strToFind, params char[] astrSplittingTokens)
+        private static bool _containsOutsideOfQuotesCaseINsensitive(
+            string str,
+            string strToFind,
+            ESCAPE_TYPES escapeType,
+            params char[] astrSplittingTokens
+        )
         {
             bool foundIt = false;
 
@@ -44,11 +49,10 @@ namespace org.rufwork.extensions
                         while (i < str.Length)
                         {
                             if (str[i].EqualsCaseInsensitive(splitterFound))
-                                if (i + 1 < str.Length)
-                                    if (str[i + 1].EqualsCaseInsensitive(splitterFound))
-                                        i = i + 2;
-                                    else
-                                        break;
+                                if (escapeType.Equals(ESCAPE_TYPES.DOUBLED_CHAR) && i + 1 < str.Length && str[i + 1].EqualsCaseInsensitive(splitterFound))
+                                    i = i + 2;
+                                else if (escapeType.Equals(ESCAPE_TYPES.BACKSLASH_BEFORE) && i > 0 && str[i - 1].Equals('\\'))
+                                    i++;
                                 else
                                     break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
                             else
@@ -73,7 +77,12 @@ namespace org.rufwork.extensions
             return foundIt;
         }
 
-        private static bool _containsOutsideOfQuotesCaseSENSITIVE(string str, string strToFind, params char[] astrSplittingTokens)
+        private static bool _containsOutsideOfQuotesCaseSENSITIVE(
+            string str,
+            string strToFind,
+            ESCAPE_TYPES escapeType,
+            params char[] astrSplittingTokens
+        )
         {
             bool foundIt = false;
 
@@ -92,11 +101,10 @@ namespace org.rufwork.extensions
                         while (i < str.Length)
                         {
                             if (str[i].Equals(splitterFound))
-                                if (i + 1 < str.Length)
-                                    if (str[i + 1].Equals(splitterFound))
-                                        i = i + 2;
-                                    else
-                                        break;
+                                if (escapeType.Equals(ESCAPE_TYPES.DOUBLED_CHAR) && i + 1 < str.Length && str[i + 1].EqualsCaseInsensitive(splitterFound))
+                                    i = i + 2;
+                                else if (escapeType.Equals(ESCAPE_TYPES.BACKSLASH_BEFORE) && i > 0 && str[i - 1].Equals('\\'))
+                                    i++;
                                 else
                                     break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
                             else
@@ -514,7 +522,7 @@ namespace org.rufwork.extensions
         /// <returns>True if string is found, false is not.</returns>
         public static bool ContainsOutsideOfQuotes(this string str, string strToFind)
         {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, '\'');
+            return str.ContainsOutsideOfQuotes(strToFind, ESCAPE_TYPES.DOUBLED_CHAR, StringComparison.CurrentCultureIgnoreCase, '\'');
         }
 
         /// <summary>
@@ -529,12 +537,23 @@ namespace org.rufwork.extensions
         /// <returns>True if it's there, false if it isn't.</returns>
         public static bool ContainsOutsideOfQuotes(this string str, string strToFind, params char[] astrSplittingTokens)
         {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
+            return str.ContainsOutsideOfQuotes(strToFind, ESCAPE_TYPES.DOUBLED_CHAR, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
         }
 
         public static bool ContainsOutsideOfQuotes(this string str, string strToFind, StringComparison stringComparison)
         {
-            return str.ContainsOutsideOfQuotes(strToFind, stringComparison, new[] { '\'' });
+            return str.ContainsOutsideOfQuotes(strToFind, ESCAPE_TYPES.DOUBLED_CHAR, stringComparison, new[] { '\'' });
+        }
+
+        /// <summary>
+        /// How are characters escaped in your string? If it's DOUBLED_CHAR,
+        /// then "" is an escaped " and should be ignored for quotes.
+        /// If BACKSLASH_BEFORE, then \" is an escaped ". Etc.
+        /// </summary>
+        public enum ESCAPE_TYPES
+        {
+            DOUBLED_CHAR = 1,
+            BACKSLASH_BEFORE = 2
         }
 
         /// <summary>
@@ -549,7 +568,10 @@ namespace org.rufwork.extensions
         /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
         /// escaped string.</param>
         /// <returns>True if it's there, false if it isn't.</returns>
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind,
+        public static bool ContainsOutsideOfQuotes(
+            this string str,
+            string strToFind,
+            ESCAPE_TYPES escapeType,
             StringComparison stringComparison,
             params char[] astrSplittingTokens)
         {
@@ -558,10 +580,10 @@ namespace org.rufwork.extensions
                 case StringComparison.CurrentCultureIgnoreCase:
                 //case StringComparison.InvariantCultureIgnoreCase: // not valid in PCL, apparently.
                 case StringComparison.OrdinalIgnoreCase:
-                    return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, astrSplittingTokens);
+                    return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, escapeType, astrSplittingTokens);
 
                 default:
-                    return _containsOutsideOfQuotesCaseSENSITIVE(str, strToFind, astrSplittingTokens);
+                    return _containsOutsideOfQuotesCaseSENSITIVE(str, strToFind, escapeType, astrSplittingTokens);
             }
         }
 
