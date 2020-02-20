@@ -1,13 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace org.rufwork.shims.io
+﻿namespace org.rufwork.shims.io
 {
     public interface ILogToFile
     {
         void AppendAllText(string path, string text);
     }
+
+    public class DebugLogWriter : ILogToFile
+    {
+        public void AppendAllText(string path, string text)
+        {
+            System.Diagnostics.Debug.WriteLine(text);
+        }
+    }
+
 }

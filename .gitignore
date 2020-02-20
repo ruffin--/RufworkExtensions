@@ -5,3 +5,4 @@ buildExtensions.bat
 bin/
 RufworkExtensions.userprefs
 *.orig
+.vs/
