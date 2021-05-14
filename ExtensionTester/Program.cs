@@ -35,6 +35,55 @@ namespace ExtensionTester
             Console.WriteLine("This is a 10¢ test".CutToUTF8Length(14) + "#");
             Console.WriteLine("This is a 10¢ test".CutToUTF8Length(15) + "#");
 
+            string olTest = @"
+<ol>
+    <li>roman upper 1</li>
+    <li>roman upper 2
+        <ol>
+            <li>letter upper 1</li>
+            <li>letter upper 2
+                <ol>
+                    <li>number 1</li>
+                    <li>number 2
+                        <ol>
+                            <li>letter lower 1</li>
+                            <li>letter lower 2</li>
+                        </ol>
+                    </li>
+                    <li>number 3</li>
+                    <li>number 4</li>
+                </ol>
+            </li>
+            <li>letter upper 3
+                <ol>
+                    <li>number 5
+                        <ol>
+                            <li>letter lower 3
+                                <ol>
+                                    <li>roman lower 1</li>
+                                    <li>roman lower 2
+                                        <ol>
+                                            <li>Start over with letter upper 1</li>
+                                            <li>Start over with letter upper 2</li>
+                                        </ol>
+                                    </li>
+                                    <li>roman lower 3</li>
+                                </ol>
+                            </li>
+                            <li>letter lower 3</li>
+                        </ol>
+                    </li>
+                    <li>number 3</li>
+                </ol>
+            </li>
+            <li>letter upper 4</li>
+        </ol>
+    </li>
+    <li>roman upper 3</li>
+</ol>";
+
+            Console.WriteLine(olTest.ElegantOrderedList());
+
             Console.WriteLine();
             Console.WriteLine("Done. Return to end.");
             Console.ReadLine();

@@ -18,6 +18,13 @@ namespace org.rufwork.extensions
 {
     public static class StringExtensions
     {
+        private static char[] _listTypes = new char[] { 'i', 'A', '1', 'a' };
+        private static readonly string _listTemplate = @"<ol type=""{replace}""";
+
+        private static Regex _listTagNoAttributes = new Regex(@"<ol>", RegexOptions.IgnoreCase);
+        private static Regex _listStartPattern = new Regex(@"<ol ", RegexOptions.IgnoreCase);
+        private static Regex _listEndPattern = new Regex(@"</ol>", RegexOptions.IgnoreCase);
+
         #region Private Methods
         // It's probably the sad tragedy of micro-optimization theater (http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/),
         // but I don't want to be checking a bCaseSensitive switch on every comparision, so I'm splitting the
@@ -155,6 +162,16 @@ namespace org.rufwork.extensions
             strIn = addQuotes ? "'" + strIn + "'" : strIn;
 
             return strIn;
+        }
+
+        private static string _getOlReplacement(int depth)
+        {
+            // Shouldn't be less than zero, but let's handle bad html that way.
+            char type = depth <= 0
+                ? 'I'
+                : _listTypes[depth % _listTypes.Length];
+
+            return _listTemplate.Replace("{replace}", type.ToString());
         }
         #endregion Private Methods
 
@@ -503,6 +520,73 @@ namespace org.rufwork.extensions
         {
             return _dbCleanAndQuote(strIn, false);
         }
+
+        /// <summary>
+        /// Takes in ordered list html and assigns [mostly] standard outline
+        /// header types, starting with capital Roman numeral (top level only),
+        /// then alternating capital letter, Arabic numerals, lower case letters,
+        /// lower case Roman numeral, then back to capital letter again.
+        /// (I. A. 1. a. i., A. 1. a...)
+        /// </summary>
+        /// <param name="src">The html to process</param>
+        /// <returns>The same html with type="X" inserted as appropriate</returns>
+        /// <remarks>Does not currently check if there's already a type attribute
+        /// in the markup. Will duplicate type if there is. Main use case is to
+        /// post-process Markdown, honestly.</remarks>
+        public static string ElegantOrderedList(this string src)
+        {
+            /*
+                a for lowercase letters
+                A for uppercase letters
+                i for lowercase Roman numerals
+                I for uppercase Roman numerals
+                1 for numbers (default)
+
+                <ol type="i">
+            */
+
+            // So we want to catch both <ol> and <ol style="something:something"...
+            // That means we either need to search for <ol[\s|> and sniff the matches
+            // for their closing tags, or do two searches and manage the heck out of `depth`
+            // --OOOORRRRR-- you can cheat and replace all `<ol>`s with something that behaves
+            // like `<ol [anything]>` so you can handle everything with the same logic.
+            src = _listTagNoAttributes.Replace(src, "<ol >");
+
+            var listStarts = _listStartPattern.Split(src);
+
+            if (listStarts.Length == 0)
+            {
+                return src;
+            }
+
+            int depth = 0;
+            StringBuilder sb = new StringBuilder();
+            var toIterate = listStarts.Take(listStarts.Length - 1);
+
+            for (int i = 0; i < listStarts.Length - 1; i++)
+            {
+                string listStart = listStarts[i];
+
+                sb.Append(listStart);
+                var olReplacement = _getOlReplacement(depth);
+
+                sb.Append(_getOlReplacement(depth));
+
+                // listStart has the balance of the code BEFORE the current ol.
+                // We need to see what's AFTER (if there is anything) to prepare for the NEXT ol's type.
+                if (i + 1 < listStarts.Length)
+                {
+                    var closingTagsInNextSection = _listEndPattern.Matches(listStarts[i + 1]);
+                    var depthChangeComing = (-1 * closingTagsInNextSection.Count) + 1;
+
+                    depth += depthChangeComing;
+                }
+            }
+            sb.Append(listStarts[listStarts.Length - 1]);
+
+            return sb.ToString();
+        }
+
         #endregion String manipulation (string-to-reformatted-string)
 
         #region string checks (return boolean based on some condition/set of conditions)
