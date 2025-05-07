@@ -22,7 +22,7 @@ namespace org.rufwork.utils
         {
             if (Logger.LogWriter != null && !string.IsNullOrWhiteSpace(filePath))
             {
-                Logger.LogWriter.AppendAllText(strMsg, strMsg);
+                Logger.LogWriter.AppendAllText(filePath, strMsg);
             }
 
             if (alsoWriteLine)
