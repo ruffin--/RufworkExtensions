@@ -4,21 +4,54 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 // ======================== EO LICENSE ===============================
 
+//using System.Security.Cryptography;
+
+using org.rufwork.utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-//using System.Security.Cryptography;
-
-using org.rufwork.utils;
 
 namespace org.rufwork.extensions
 {
     public static class StringExtensions
     {
+        private static char[] _listTypes = new char[] { 'i', 'A', '1', 'a' };
+        private static char[] _acCrLF = { '\n', '\r' };
+
+        /// <summary>
+        /// How are characters escaped in your string? If it's DOUBLED_CHAR,
+        /// then "" is an escaped " and should be ignored for quotes.
+        /// If BACKSLASH_BEFORE, then \" is an escaped ". Etc.
+        /// </summary>
+        public enum ESCAPE_TYPES
+        {
+            DOUBLED_CHAR = 1,
+            BACKSLASH_BEFORE = 2
+        }
+        private static readonly string _listTemplate = @"<ol type=""{replace}""";
+
+        private static Regex _listTagNoAttributes = new Regex(@"<ol>", RegexOptions.IgnoreCase);
+        private static Regex _listStartPattern = new Regex(@"<ol ", RegexOptions.IgnoreCase);
+        private static Regex _listEndPattern = new Regex(@"</ol>", RegexOptions.IgnoreCase);
+
+        private static Regex _regexStartDigitsPeriod = new Regex(@"^\d+\. ");
+        private static Regex _regexNoContentOL = new Regex(@"^\s*[0-9]+\. $");
+
+        #region Private Methods
+        private static string _getOlReplacement(int depth)
+        {
+            // Shouldn't be less than zero, but let's handle bad html that way.
+            char type = depth <= 0
+                ? 'I'
+                : _listTypes[depth % _listTypes.Length];
+
+            return _listTemplate.Replace("{replace}", type.ToString());
+        }
+        #endregion Private Methods
+
         public static string DraconianWrap(this string str, int lineLength, string lineEnding = "\n")
         {
             StringBuilder stringBuilder = new StringBuilder();
@@ -72,7 +105,7 @@ namespace org.rufwork.extensions
         /// <param name="self">The string being substringed</param>
         /// <param name="intStart">0-indexed character from which to start the substring.</param>
         /// <param name="intLength">Length of substring to attempt to take.</param>
-        /// <returns>Returns the normal substring, string.Empty if start is past the end of the string, or 
+        /// <returns>Returns the normal substring, string.Empty if start is past the end of the string, or
         /// as much of the string as there is if the length of the substring would pass the end of `self`.</returns>
         public static string SafeSubstring(this string self, int intStart, int intLength)
         {
@@ -82,7 +115,7 @@ namespace org.rufwork.extensions
                 return self.Substring(intStart, Math.Min(intStart + intLength, self.Length - intStart));
         }
 
-        // Note that this is by bytes.
+        // Note that this is length by bytes.
         public static string SafeUTFSubstring(this string self, int intStartCharacter, int intLengthInBytes)
         {
             if (intStartCharacter > self.Length)
@@ -142,21 +175,19 @@ namespace org.rufwork.extensions
                 RegexOptions.IgnoreCase);
         }
 
-        public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore)
+        public static string ExtractBetweenFirstInstanceofDelimiters(this string str, string delimiterStartAfter, string delimiterEndBefore, bool iLiedUseLast = false)
         {
             string strRun = string.Empty;
+            int indexStart = iLiedUseLast ? str.LastIndexOf(delimiterStartAfter) : str.IndexOf(delimiterStartAfter);
+            int indexEnd = iLiedUseLast ? str.LastIndexOf(delimiterEndBefore) : str.IndexOf(delimiterEndBefore);
 
-            if (-1 < str.IndexOf(delimiterStartAfter))
+            if (indexStart < indexEnd && indexStart > -1)
             {
-                strRun = str.Substring(str.IndexOf(delimiterStartAfter) + delimiterStartAfter.Length);
-                if (-1 < strRun.IndexOf(delimiterEndBefore))
-                {
-                    strRun = strRun.Substring(0, strRun.IndexOf(delimiterEndBefore));
-                }
-                else
-                {
-                    strRun = string.Empty;  // No luck, Ending not after Start; go back to nothing.
-                }
+                strRun = str.Substring(indexStart + delimiterStartAfter.Length, indexEnd - (indexStart + delimiterStartAfter.Length));
+            }
+            else
+            {
+                strRun = string.Empty;  // No luck, Ending not after Start or not found; go back to nothing.
             }
 
             return strRun;
@@ -193,7 +224,7 @@ namespace org.rufwork.extensions
                     while (i < str.Length)
                     {
                         if (str[i].Equals(splitterFound))
-                            // If we have two of the same splitter char in a row, we're going to 
+                            // If we have two of the same splitter char in a row, we're going to
                             // treat it as an escape sequence.
                             // TODO: Could make that optional.
                             if (i + 1 < str.Length)
@@ -213,7 +244,7 @@ namespace org.rufwork.extensions
         }
 
         /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// Looks for a string that isn't within a quoted section of the parent string.
         /// This overload will use default quote character of ' and a
         /// StringComparison type of CurrentCultureIgnorecase.
         /// </summary>
@@ -222,11 +253,11 @@ namespace org.rufwork.extensions
         /// <returns>True if string is found, false is not.</returns>
         public static bool ContainsOutsideOfQuotes(this string str, string strToFind)
         {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, '\'');
+            return str.ContainsOutsideOfQuotes(strToFind, ESCAPE_TYPES.DOUBLED_CHAR, StringComparison.CurrentCultureIgnoreCase, '\'');
         }
 
         /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// Looks for a string that isn't within a quoted section of the parent string.
         /// This overload will accepts any number of splitting tokens as trailing params, and uses
         /// StringComparison type of CurrentCultureIgnorecase.
         /// </summary>
@@ -237,16 +268,16 @@ namespace org.rufwork.extensions
         /// <returns>True if it's there, false if it isn't.</returns>
         public static bool ContainsOutsideOfQuotes(this string str, string strToFind, params char[] astrSplittingTokens)
         {
-            return str.ContainsOutsideOfQuotes(strToFind, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
+            return str.ContainsOutsideOfQuotes(strToFind, ESCAPE_TYPES.DOUBLED_CHAR, StringComparison.CurrentCultureIgnoreCase, astrSplittingTokens);
         }
 
         public static bool ContainsOutsideOfQuotes(this string str, string strToFind, StringComparison stringComparison)
         {
-            return str.ContainsOutsideOfQuotes(strToFind, stringComparison, new[] {'\''});
+            return str.ContainsOutsideOfQuotes(strToFind, ESCAPE_TYPES.DOUBLED_CHAR, stringComparison, new[] { '\'' });
         }
 
         /// <summary>
-        /// Looks for a string that isn't within a quoted section of the parent string. 
+        /// Looks for a string that isn't within a quoted section of the parent string.
         /// If the double-quote is passed in as a "splitting token", and you're looking for "test" within "This is 'a test' isn''t it?", it'd return false, because
         /// "test" is within ' and '.
         ///
@@ -257,7 +288,10 @@ namespace org.rufwork.extensions
         /// <param name="astrSplittingTokens">The tokens that can be used to declare the start and stop of an
         /// escaped string.</param>
         /// <returns>True if it's there, false if it isn't.</returns>
-        public static bool ContainsOutsideOfQuotes(this string str, string strToFind,
+        public static bool ContainsOutsideOfQuotes(
+            this string str,
+            string strToFind,
+            ESCAPE_TYPES escapeType,
             StringComparison stringComparison,
             params char[] astrSplittingTokens)
         {
@@ -266,19 +300,24 @@ namespace org.rufwork.extensions
                 case StringComparison.CurrentCultureIgnoreCase:
                 //case StringComparison.InvariantCultureIgnoreCase: // not valid in PCL, apparently.
                 case StringComparison.OrdinalIgnoreCase:
-                    return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, astrSplittingTokens);
+                    return _containsOutsideOfQuotesCaseINsensitive(str, strToFind, escapeType, astrSplittingTokens);
 
                 default:
-                    return _containsOutsideOfQuotesCaseSENSITIVE(str, strToFind, astrSplittingTokens);
+                    return _containsOutsideOfQuotesCaseSENSITIVE(str, strToFind, escapeType, astrSplittingTokens);
             }
         }
 
         // It's probably the sad tragedy of micro-optimization theater (http://blog.codinghorror.com/the-sad-tragedy-of-micro-optimization-theater/),
-        // but I don't want to be checking a bCaseSensitive switch on every comparision, so I'm splitting the 
+        // but I don't want to be checking a bCaseSensitive switch on every comparision, so I'm splitting the
         // engines up.
         // TODO: Insensitive probably needs some optimization. Eg, if anglais, we can do lots
         // of ASCII-ish cheats, right? Any rate, need to consider optimization.
-        private static bool _containsOutsideOfQuotesCaseINsensitive(string str, string strToFind, params char[] astrSplittingTokens)
+        private static bool _containsOutsideOfQuotesCaseINsensitive(
+            string str,
+            string strToFind,
+            ESCAPE_TYPES escapeType,
+            params char[] astrSplittingTokens
+        )
         {
             bool foundIt = false;
 
@@ -298,16 +337,15 @@ namespace org.rufwork.extensions
                         while (i < str.Length)
                         {
                             if (str[i].EqualsCaseInsensitive(splitterFound))
-                                if (i + 1 < str.Length)
-                                    if (str[i + 1].EqualsCaseInsensitive(splitterFound))
-                                        i = i + 2;
-                                    else
-                                        break;
+                                if (escapeType.Equals(ESCAPE_TYPES.DOUBLED_CHAR) && i + 1 < str.Length && str[i + 1].EqualsCaseInsensitive(splitterFound))
+                                    i = i + 2;
+                                else if (escapeType.Equals(ESCAPE_TYPES.BACKSLASH_BEFORE) && i > 0 && str[i - 1].Equals('\\'))
+                                    i++;
                                 else
                                     break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
                             else
                                 i++;
-                         }
+                        }
                     }
                     else
                     {
@@ -326,8 +364,13 @@ namespace org.rufwork.extensions
 
             return foundIt;
         }
-        
-        private static bool _containsOutsideOfQuotesCaseSENSITIVE(string str, string strToFind, params char[] astrSplittingTokens)
+
+        private static bool _containsOutsideOfQuotesCaseSENSITIVE(
+            string str,
+            string strToFind,
+            ESCAPE_TYPES escapeType,
+            params char[] astrSplittingTokens
+        )
         {
             bool foundIt = false;
 
@@ -346,11 +389,10 @@ namespace org.rufwork.extensions
                         while (i < str.Length)
                         {
                             if (str[i].Equals(splitterFound))
-                                if (i + 1 < str.Length)
-                                    if (str[i + 1].Equals(splitterFound))
-                                        i = i + 2;
-                                    else
-                                        break;
+                                if (escapeType.Equals(ESCAPE_TYPES.DOUBLED_CHAR) && i + 1 < str.Length && str[i + 1].EqualsCaseInsensitive(splitterFound))
+                                    i = i + 2;
+                                else if (escapeType.Equals(ESCAPE_TYPES.BACKSLASH_BEFORE) && i > 0 && str[i - 1].Equals('\\'))
+                                    i++;
                                 else
                                     break;  // we're at the end of `str`; it'll kick out in the initial while in the next pass.
                             else
@@ -431,16 +473,16 @@ namespace org.rufwork.extensions
             return str;
         }
 
-        public static Queue<String> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
+        public static Queue<string> SplitSeeingSingleQuotesAndBackticks(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults = true)
         {
             return strToSplit.SplitSeeingQuotes(strSplittingToken, bIncludeToken, bTrimResults, '\'', '`');
         }
 
         // Another cheesy regular expression end run.  Don't overcomplicate jive.
         // This should split up strings with multiple commands into, well, multiple commands.
-        // Remember the respect tokens within backticks to support MySQL style backtick quotes in 
+        // Remember the respect tokens within backticks to support MySQL style backtick quotes in
         // statements like CREATE TABLE `DbVersion`...
-        public static Queue<String> SplitSeeingQuotes(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults, params char[] validQuoteChars)
+        public static Queue<string> SplitSeeingQuotes(this string strToSplit, string strSplittingToken, bool bIncludeToken, bool bTrimResults, params char[] validQuoteChars)
         {
             Queue<string> qReturn = new Queue<string>();
             StringBuilder stringBuilder = new StringBuilder();
@@ -532,7 +574,7 @@ namespace org.rufwork.extensions
         // Yes, I gave up on RegExp and used a char array.  Sue me.
         // Honestly, this is much more straightforward.  It's like a regexp
         // as an exploded view.
-        // Honestly not sure why this isn't in a "SqlSpecificStringExtensions" class.
+        // Honestly not sure why this isn't in a "SqlSpecificStringExtensions" class. <<< This. +1.
         // It will be soonish.
         public static string[] SqlToTokens(this string strToToke)
         {
@@ -617,11 +659,6 @@ namespace org.rufwork.extensions
                 qString.Enqueue(strTemp);
             }
             return qString.ToArray();
-        }
-
-        public static int CountCharInString(this string strToSearch, string strToFind)
-        {
-            return strToSearch.Length - (strToSearch.Replace(strToFind, "").Length / strToFind.Length);
         }
 
         public static string RemoveNewlines(this string strIn, string strReplacement)
@@ -720,7 +757,7 @@ namespace org.rufwork.extensions
 
         /// <summary>
         /// Cleans a string to insert into SQL so that it shouldn't allow
-        /// SQL injection when run (but might). Not guaranteeing it's 
+        /// SQL injection when run (but might). Not guaranteeing it's
         /// particularly robust at this point, I don't think.
         /// Adds single quotes to both ends of the string (start and end).
         /// </summary>
@@ -747,15 +784,355 @@ namespace org.rufwork.extensions
             return strIn;
         }
 
-        public static string RemoveLastNewLine(this string str)
+        /// <summary>
+        /// Remove a trailing newline from a string.
+        /// </summary>
+        /// <param name="str">The string being evaluated</param>
+        /// <param name="removeCRorNLifNoPlatformNL">If true, a single \n or \r, whichever is trailing,
+        /// will be removed if the string does not end in an Environment.NewLine</param>
+        /// <returns></returns>
+        public static string RemoveLastNewLine(this string str, bool removeCRorNLifNoPlatformNL = false)
         {
-            if (str.EndsWith(System.Environment.NewLine))
+            // TODO: I'm having trouble with NewLines and UWP TextBox.SelectedText, which
+            // seems to blast \n characters, therefore removeCRorNLifNoPlatNL. See...
+            // http://stackoverflow.com/questions/35138047/textbox-text-substringtextbox-selectionstart-doesnt-work-because-selectedtext
+            if (str.EndsWith(Environment.NewLine))
             {
-                str = str.Substring(0, str.Length - System.Environment.NewLine.Length);
+                str = str.Substring(0, str.Length - Environment.NewLine.Length);
+            }
+            else
+            {
+                if (str.EndsWithCRorNL() && removeCRorNLifNoPlatformNL)
+                {
+                    str = str.Substring(0, str.Length - 1);
+                }
             }
 
             return str;
         }
+
+        public static string RemoveLastNChars(this string str, int intSlice)
+        {
+            string ret = str;
+
+            if (0 == intSlice)
+            {
+                ret = str;
+            }
+            else if (intSlice > 0)
+            {
+                ret = str.Substring(0, intSlice);
+            }
+            else
+            {
+                // Remember that intSlice is negative here
+                ret = str.Remove(str.Length + intSlice);
+            }
+            return ret;
+        }
+
+        public static string Splice(this string str, string toInsert, int spliceLoc)
+        {
+            string ret = str;
+            if (!string.IsNullOrEmpty(str) && str.Length >= spliceLoc && spliceLoc > -1)
+            {
+                ret = str.Substring(0, spliceLoc) + toInsert + str.Substring(spliceLoc);
+            }
+            return ret;
+        }
+
+        public static string ExtractHtmlFromClipboardString(this string str)
+        {
+            return str.ExtractBetweenFirstInstanceofDelimiters("<!--StartFragment-->", "<!--EndFragment-->");
+        }
+
+        public static string Slice(this string str, int intSlice)
+        {
+            string ret = str;
+
+            if (0 == intSlice)
+            {
+                ret = str;
+            }
+            else if (intSlice > 0)
+            {
+                ret = str.Substring(0, intSlice);
+            }
+            else
+            {
+                // Remember that intSlice is negative here
+                ret = str.Remove(str.Length + intSlice);
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// Takes in ordered list html and assigns [mostly] standard outline
+        /// header types, starting with capital Roman numeral (top level only),
+        /// then alternating capital letter, Arabic numerals, lower case letters,
+        /// lower case Roman numeral, then back to capital letter again.
+        /// (I. A. 1. a. i., A. 1. a...)
+        /// </summary>
+        /// <param name="src">The html to process</param>
+        /// <returns>The same html with type="X" inserted as appropriate</returns>
+        /// <remarks>Does not currently check if there's already a type attribute
+        /// in the markup. Will duplicate type if there is. Main use case is to
+        /// post-process Markdown, honestly.</remarks>
+        public static string ElegantOrderedList(this string src)
+        {
+            /*
+                a for lowercase letters
+                A for uppercase letters
+                i for lowercase Roman numerals
+                I for uppercase Roman numerals
+                1 for numbers (default)
+
+                <ol type="i">
+            */
+
+            // So we want to catch both <ol> and <ol style="something:something"...
+            // That means we either need to search for <ol[\s|> and sniff the matches
+            // for their closing tags, or do two searches and manage the heck out of `depth`
+            // --OOOORRRRR-- you can cheat and replace all `<ol>`s with something that behaves
+            // like `<ol [anything]>` so you can handle everything with the same logic.
+            src = _listTagNoAttributes.Replace(src, "<ol >");
+
+            var listStarts = _listStartPattern.Split(src);
+
+            if (listStarts.Length == 0)
+            {
+                return src;
+            }
+
+            int depth = 0;
+            StringBuilder sb = new StringBuilder();
+            var toIterate = listStarts.Take(listStarts.Length - 1);
+
+            for (int i = 0; i < listStarts.Length - 1; i++)
+            {
+                string listStart = listStarts[i];
+
+                sb.Append(listStart);
+                var olReplacement = _getOlReplacement(depth);
+
+                sb.Append(_getOlReplacement(depth));
+
+                // listStart has the balance of the code BEFORE the current ol.
+                // We need to see what's AFTER (if there is anything) to prepare for the NEXT ol's type.
+                if (i + 1 < listStarts.Length)
+                {
+                    var closingTagsInNextSection = _listEndPattern.Matches(listStarts[i + 1]);
+                    var depthChangeComing = (-1 * closingTagsInNextSection.Count) + 1;
+
+                    depth += depthChangeComing;
+                }
+            }
+            sb.Append(listStarts[listStarts.Length - 1]);
+
+            return sb.ToString();
+        }
+
+        public static bool CouldBeUrl(this string str)
+        {
+            //return str.StartsWith("http") && str.Contains("://");
+            return Uri.IsWellFormedUriString(str, UriKind.Absolute);
+        }
+
+        /// <summary>
+        /// This method checks if a specific leading string starts immediately before a zero-width
+        /// cursor placed at the zero-based index given in `zeroBasedPos` in the string being tested.
+        /// "01234".Leads(2, "01") == true
+        /// Note that empty test strings will always return true.
+        /// </summary>
+        /// <param name="str">The larger "parent" string to test</param>
+        /// <param name="zeroBasedPos">The location of the zero-width "cursor" demarking the test start.</param>
+        /// <param name="lead">The string to match in the parent string</param>
+        /// <returns>True if the string leads the given cursor location. False otherwise. "" as a leading
+        /// string will always return true.</returns>
+        public static bool Leads(this string str, int zeroBasedPos, string lead)
+        {
+            bool ret = false;
+
+            if (null != lead && zeroBasedPos - lead.Length >= 0)
+            {
+                ret = true;
+
+                int i = 1;
+                while (i <= lead.Length && ret)
+                {
+                    ret = ret && str[zeroBasedPos - i].Equals(lead[lead.Length - i]);
+                    i++;
+                }
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// This method checks if a specific trailing string starts immediately after a zero-width
+        /// cursor placed at the zero-based index given in `zeroBasedPos` in the string being tested.
+        /// "01234".Trails(2, "234") == true
+        /// Note that empty test strings will always return true.
+        /// </summary>
+        /// <param name="str">The larger "parent" string to test</param>
+        /// <param name="zeroBasedPos">The location of the zero-width "cursor" demarking the test start.</param>
+        /// <param name="trail">The string to match in the parent string</param>
+        /// <returns>True if the string trails the given cursor location. False otherwise. "" as a trailing
+        /// string will always return true.</returns>
+        public static bool Trails(this string str, int zeroBasedPos, string trail)
+        {
+            bool ret = false;
+
+            if (null != trail && zeroBasedPos + trail.Length <= str.Length)
+            {
+                ret = true;
+
+                int i = 0;
+                while (i < trail.Length && ret)
+                {
+                    ret = ret && str[zeroBasedPos + i].Equals(trail[i]);
+                    i++;
+                }
+            }
+            return ret;
+        }
+
+        public static string[] Split(this string str, string splitter)
+        {
+            return str.Split(new string[] { splitter }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        // Not strictly an IEnumerable (okay okay, not one at all), but returns two strings
+        // based on content, so fitting into Splits/string parses region.
+        // For some reason, the PCL wasn't supporting TakeWhile, so I skipped on this LINQ heavy solution:
+        // string toPrepend = string.Concat(value.TakeWhile(c => c.Equals(' '))); // ...
+        // Update: Because TakeWhile is on IEnumerable, and you need to ToCharArray on the string first. (>.<)
+        // TODO: Rewrite for simplicity?
+        public static Tuple<string, string> PullLeadingAndTrailingSpaces(this string value)
+        {
+            // I don't normally return like this. Sorry.
+            if (string.IsNullOrEmpty(value))
+                return new Tuple<string, string>(string.Empty, string.Empty);
+
+            if (string.IsNullOrWhiteSpace(value))
+                return new Tuple<string, string>(value, string.Empty);
+
+            int prependCount = 0;
+            int appendCount = 0;
+
+            int i = 0;
+            while (value[i++].Equals(' '))
+                prependCount++;
+
+            i = value.Length - 1;
+            while (value[i--].Equals(' '))
+                appendCount++;
+
+            return new Tuple<string, string>(new string(' ', prependCount), new string(' ', appendCount));
+        }
+
+        public static QuackResult QuacksLikeOrderedList(this string fullLineWithoutEnding, int tabLengthInSpaces)
+        {
+
+            QuackResult result = new QuackResult();
+            var match = _regexStartDigitsPeriod.Match(fullLineWithoutEnding.TrimStart());
+
+            int spaceCount = fullLineWithoutEnding.ToCharArray().TakeWhile(c => c.Equals(' ')).Count();
+
+            result.QuacksLikeAnOL = 0 == spaceCount % tabLengthInSpaces
+                && match.Success;
+
+            if (match.Success)
+            {
+                result.HasContent = !_regexNoContentOL.IsMatch(fullLineWithoutEnding);
+                result.ListOrdinal = int.Parse(match.Value.Trim().Trim('.'));
+                result.MatchLength = match.Length;
+                result.MatchStart = match.Index + spaceCount;
+            }
+
+            return result;
+        }
+
+        public static string RemoveLeadingNewLine(this string str)
+        {
+            if (str.StartsWith(Environment.NewLine))
+            {
+                str = str.Substring(Environment.NewLine.Length);
+            }
+
+            return str;
+        }
+
+        public static string NormalizeNewlineToCarriageReturn(this string str)
+        {
+            str = str.Replace("\r\n", "\r");
+            str = str.Replace('\n', '\r');
+            return str;
+        }
+
+        public static bool EndsWithCRorNL(this string str)
+        {
+            bool ret = false;
+
+            if (!string.IsNullOrEmpty(str))
+            {
+                ret = _acCrLF.Contains(str[str.Length - 1]);
+            }
+
+            return ret;
+        }
+
+        public static string SplitAtFirstNewline(this string str)
+        {
+            int index = str.IndexOfNewlineChar();
+            return index > -1 ? str.Substring(0, index) : str;
+        }
+
+        public static string SplitAtLastNewline(this string str)
+        {
+            int index = str.LastIndexOfNewlineChar();
+            return index > -1 ? str.Substring(index + 1) : str;
+        }
+
+        public static int IndexOfNewlineChar(this string str)
+        {
+            return str.IndexOfAny(_acCrLF);
+        }
+
+        public static int LastIndexOfNewlineChar(this string str)
+        {
+            return str.LastIndexOfAny(_acCrLF);
+        }
+
+        /// <summary>
+        /// Checks the string to see how many times another string occurs.
+        /// Case sensitive.
+        /// </summary>
+        /// <param name="strToSearch">The string on which this extension method is being called.</param>
+        /// <param name="strToFind">The case sensitive substring whose occurrences are being counted.</param>
+        /// <returns>With any luck, the number of times strToFind was found in strToSearch.</returns>
+        public static int CountSubstringPatternOccurrences(this string strToSearch, string strToFind)
+        {
+            return strToSearch.Length - (strToSearch.Replace(strToFind, "").Length / strToFind.Length);
+        }
+
+        public class QuackResult
+        {
+            public bool QuacksLikeAnOL = false;
+            public bool HasContent = false;
+            public int ListOrdinal = -1;
+            public int MatchLength = -1;
+            public int MatchStart = -1;
+
+            public override string ToString()
+            {
+                return "Quacks? " + this.QuacksLikeAnOL
+                    + " :: HasContent? " + this.HasContent
+                    + " :: ListOrdinal: " + this.ListOrdinal
+                    + " :: MatchLength: " + this.MatchLength
+                    + " :: MatchStart: " + this.MatchStart;
+            }
+        }
+
 
         #region CodeProject
         // Source: http://www.codeproject.com/Articles/11902/Convert-HTML-to-Plain-Text
